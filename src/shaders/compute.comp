@@ -7,12 +7,13 @@ layout(local_size_x = WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 layout(set = 0, binding = 0) uniform CameraBufferObject {
     mat4 view;
     mat4 proj;
+    vec4 eye;
 } camera;
 
 layout(set = 1, binding = 0) uniform Time {
     float deltaTime;
     float totalTime;
-};
+} time;
 
 struct Blade {
     vec4 v0;
@@ -21,36 +22,138 @@ struct Blade {
     vec4 up;
 };
 
-// TODO: Add bindings to:
-// 1. Store the input blades
-// 2. Write out the culled blades
-// 3. Write the total number of blades remaining
+layout(set = 2, binding = 0) buffer BladesBuffer {
+    Blade blades[];
+} bladesBuffer;
 
-// The project is using vkCmdDrawIndirect to use a buffer as the arguments for a draw call
-// This is sort of an advanced feature so we've showed you what this buffer should look like
-//
-// layout(set = ???, binding = ???) buffer NumBlades {
-// 	  uint vertexCount;   // Write the number of blades remaining here
-// 	  uint instanceCount; // = 1
-// 	  uint firstVertex;   // = 0
-// 	  uint firstInstance; // = 0
-// } numBlades;
+layout(set = 3, binding = 0) buffer CulledBladesBuffer {
+	Blade culledBlades[];
+} culledBladesBuffer;
 
-bool inBounds(float value, float bounds) {
-    return (value >= -bounds) && (value <= bounds);
+layout(set = 4, binding = 0) buffer NumBlades {
+	  uint vertexCount;
+	  uint instanceCount;
+	  uint firstVertex;
+	  uint firstInstance;
+} numBlades;
+
+
+
+const float gravCoe = 3.f;
+const float windStrength = 5.f;
+
+// ref: https://www.shadertoy.com/view/ldc3RB
+vec2 hash22(vec2 p)
+{
+    p = vec2( dot(p,vec2(127.1,311.7)),
+			  dot(p,vec2(269.5,183.3)));
+    
+    return -1.0 + 2.0 * fract(sin(p)*43758.5453123);
+}
+
+float hash21(vec2 p)
+{
+	float h = dot(p,vec2(127.1,311.7));
+	
+    return -1.0 + 2.0 * fract(sin(h)*43758.5453123);
+}
+
+float perlin2D(vec2 p)
+{
+    vec2 pi = floor(p);
+    vec2 pf = p - pi;
+    
+    vec2 w = pf * pf * (3.0 - 2.0 * pf);
+    
+    return mix(mix(dot(hash22(pi + vec2(0.0, 0.0)), pf - vec2(0.0, 0.0)), 
+                   dot(hash22(pi + vec2(1.0, 0.0)), pf - vec2(1.0, 0.0)), w.x), 
+               mix(dot(hash22(pi + vec2(0.0, 1.0)), pf - vec2(0.0, 1.0)), 
+                   dot(hash22(pi + vec2(1.0, 1.0)), pf - vec2(1.0, 1.0)), w.x),
+               w.y);
+}
+
+
+bool isInFrustum(vec3 x)
+{
+    vec4 clipPos = camera.proj * camera.view * vec4(x, 1.0f);
+    clipPos /= clipPos.w;
+    return clipPos.x < 1.f && clipPos.x > -1.f && clipPos.y < 1.f && clipPos.y > -1.f
+    && clipPos.z < 1.f && clipPos.z > -1.f;
 }
 
 void main() {
 	// Reset the number of blades to 0
 	if (gl_GlobalInvocationID.x == 0) {
-		// numBlades.vertexCount = 0;
+		numBlades.vertexCount = 0;
 	}
 	barrier(); // Wait till all threads reach this point
+	Blade blade = bladesBuffer.blades[gl_GlobalInvocationID.x];
 
-    // TODO: Apply forces on every blade and update the vertices in the buffer
+	vec3 v0 = blade.v0.xyz;
+    vec3 v1 = blade.v1.xyz;
+    vec3 v2 = blade.v2.xyz;
+    vec3 up = blade.up.xyz;
+    float angle = blade.v0.w;
+    float height = blade.v1.w;
+    float stiff = blade.up.w;   
+    vec3 dir = vec3(cos(angle), 0, sin(angle));
+    vec3 nor = normalize(cross(up, dir));
 
-	// TODO: Cull blades that are too far away or not in the camera frustum and write them
-	// to the culled blades buffer
-	// Note: to do this, you will need to use an atomic operation to read and update numBlades.vertexCount
-	// You want to write the visible blades to the buffer without write conflicts between threads
+    // gravity
+    vec3 gE = vec3(0.f, -1.f, 0.f) * gravCoe;
+    vec3 gF = (0.25f * gravCoe) * nor;
+    vec3 gravity = gE + gF;
+
+    // recovery    
+    vec3 tip = v0 + normalize(up) * height;
+    vec3 recovery = (tip - v2) * stiff;
+
+    // wind
+    float windAngle = perlin2D(v0.xz * 0.1f + time.totalTime) * 3.14159265f;
+    vec3 windForce = windStrength * vec3(cos(windAngle), -1.f, sin(windAngle));
+    float windDir = 1.f - abs(dot(normalize(windForce), normalize(v2 - v0)));
+    float windFr = dot(v2-v0, up) / height;
+    windForce *= windDir * windFr;
+
+    // update
+    v2 += (gravity + recovery + windForce) * time.deltaTime;       
+    float lproj = length(v2 - v0 - up * dot(v2-v0, up));
+    v1 = v0 + height * up * max(1.f - lproj / height, 0.05f * max(lproj / height, 1.f) );
+
+    v2 -= up * min(dot(up, v2 - v0), 0.f);
+    float L0 = distance(v0, v2);
+    float L1 = distance(v0, v1) + distance(v1, v2);
+    float L = (2.f * L0 + L1) / 3.f;
+    float r = height / L;
+    v1 = v0 + r * (v1 - v0);
+    v2 = v1 + r * (v2 - v1);
+
+    // write data back
+    bladesBuffer.blades[gl_GlobalInvocationID.x].v1.xyz = v1;
+    bladesBuffer.blades[gl_GlobalInvocationID.x].v2.xyz = v2;
+    blade.v1.xyz = v1;
+    blade.v2.xyz = v2;
+
+	// Culling
+
+    // frustum culling
+    if (!isInFrustum(v0) && !isInFrustum(v2))
+    {
+        return;
+	}
+
+    // direction cull
+    vec3 camFwd = normalize(vec3(camera.view[0].z, camera.view[1].z, camera.view[2].z));
+    if (abs(dot(camFwd, dir)) > 0.9f) {
+		return;
+	}
+
+    // distance culling
+    if (distance(camera.eye.xyz, v0) > 100.f)
+    {
+        return;
+    }
+
+	uint currIndex = atomicAdd(numBlades.vertexCount, 1);
+	culledBladesBuffer.culledBlades[currIndex] = blade;
 }
