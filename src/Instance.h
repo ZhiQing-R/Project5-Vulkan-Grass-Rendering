@@ -23,6 +23,7 @@ public:
     
     uint32_t GetMemoryTypeIndex(uint32_t types, VkMemoryPropertyFlags properties) const;
     VkFormat GetSupportedFormat(const std::vector<VkFormat>& candidates, VkImageTiling tiling, VkFormatFeatureFlags features) const;
+    VkSampleCountFlagBits GetMaxUsableSampleCount() const;
 
     void PickPhysicalDevice(std::vector<const char*> deviceExtensions, QueueFlagBits requiredQueues, VkSurfaceKHR surface = VK_NULL_HANDLE);
 

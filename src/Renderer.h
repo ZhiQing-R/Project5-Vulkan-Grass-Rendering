@@ -82,6 +82,10 @@ private:
     VkImage depthImage;
     VkDeviceMemory depthImageMemory;
     VkImageView depthImageView;
+    VkImage colorImage;
+    VkDeviceMemory colorImageMemory;
+    VkImageView colorImageView;
+	VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
     std::vector<VkFramebuffer> framebuffers;
 
     std::vector<VkCommandBuffer> commandBuffers;
