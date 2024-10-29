@@ -6,6 +6,7 @@ layout(quads, equal_spacing, ccw) in;
 layout(set = 0, binding = 0) uniform CameraBufferObject {
     mat4 view;
     mat4 proj;
+    vec4 eye;
 } camera;
 
 // TODO: Declare tessellation evaluation shader inputs and outputs
@@ -16,8 +17,9 @@ layout(location = 3) in vec4 te_up[];
 
 layout(location = 0) out vec3 normal;
 layout(location = 1) out vec3 pos;
+layout(location = 2) out vec2 uv;
 
-const float curvature = 0.3f;
+const float curvature = 0.4f;
 
 vec3 slerp(in vec3 a, in vec3 b, in float t)
 {
@@ -31,6 +33,7 @@ vec3 slerp(in vec3 a, in vec3 b, in float t)
 void main() {
     float u = gl_TessCoord.x;
     float v = gl_TessCoord.y;
+    uv = vec2(u, v);
 
 	float angle = te_v0[0].w;
     float height = te_v1[0].w;

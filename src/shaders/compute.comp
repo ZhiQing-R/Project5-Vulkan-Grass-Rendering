@@ -1,6 +1,10 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
+#define DIRECTION_CULL 1
+#define DISTANCE_CULL 1
+#define FRUSTUM_CULL 1
+
 #define WORKGROUP_SIZE 32
 layout(local_size_x = WORKGROUP_SIZE, local_size_y = 1, local_size_z = 1) in;
 
@@ -137,22 +141,28 @@ void main() {
 	// Culling
 
     // frustum culling
+    #if FRUSTUM_CULL
     if (!isInFrustum(v0) && !isInFrustum(v2))
     {
         return;
 	}
+    #endif
 
     // direction cull
+    #if DIRECTION_CULL
     vec3 camFwd = normalize(vec3(camera.view[0].z, camera.view[1].z, camera.view[2].z));
     if (abs(dot(camFwd, dir)) > 0.9f) {
 		return;
 	}
+    #endif
 
     // distance culling
-    if (distance(camera.eye.xyz, v0) > 100.f)
+    #if DISTANCE_CULL
+    if (distance(camera.eye.xyz, v0) > 20.f)
     {
         return;
     }
+    #endif
 
 	uint currIndex = atomicAdd(numBlades.vertexCount, 1);
 	culledBladesBuffer.culledBlades[currIndex] = blade;

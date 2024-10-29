@@ -6,6 +6,7 @@ layout(vertices = 4) out;
 layout(set = 0, binding = 0) uniform CameraBufferObject {
     mat4 view;
     mat4 proj;
+    vec4 eye;
 } camera;
 
 in gl_PerVertex
@@ -32,10 +33,14 @@ void main() {
     te_v2[gl_InvocationID] = tc_v2[gl_InvocationID];
     te_up[gl_InvocationID] = tc_up[gl_InvocationID];
 
-    gl_TessLevelInner[0] = 8;
-    gl_TessLevelInner[1] = 8;
-    gl_TessLevelOuter[0] = 8;
-    gl_TessLevelOuter[1] = 8;
-    gl_TessLevelOuter[2] = 8;
-    gl_TessLevelOuter[3] = 8;
+    vec3 pos = tc_v0[gl_InvocationID].xyz;
+    float dist = length(pos - camera.eye.xyz);
+    float lod = clamp(floor(12.0 - dist), 2.0, 12.0);
+
+    gl_TessLevelInner[0] = 1;
+    gl_TessLevelInner[1] = lod;
+    gl_TessLevelOuter[0] = lod;
+    gl_TessLevelOuter[1] = 1;
+    gl_TessLevelOuter[2] = lod;
+    gl_TessLevelOuter[3] = 1;
 }

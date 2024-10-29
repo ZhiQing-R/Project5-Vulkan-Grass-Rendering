@@ -19,7 +19,6 @@ private:
     
     VkBuffer timeBuffer;
     VkDeviceMemory timeBufferMemory;
-    Time time;
     
     void* mappedData;
 
@@ -29,6 +28,8 @@ private:
 high_resolution_clock::time_point startTime = high_resolution_clock::now();
 
 public:
+    Time time;
+
     Scene() = delete;
     Scene(Device* device);
     ~Scene();
