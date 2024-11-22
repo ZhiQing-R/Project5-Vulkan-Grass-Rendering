@@ -23,6 +23,7 @@ namespace {
 
     bool leftMouseDown = false;
     bool rightMouseDown = false;
+    bool midMouseDown = false;
     double previousX = 0.0;
     double previousY = 0.0;
 
@@ -44,6 +45,16 @@ namespace {
                 rightMouseDown = false;
             }
         }
+        else if (button == GLFW_MOUSE_BUTTON_MIDDLE)
+        {
+            if (action == GLFW_PRESS) {
+                midMouseDown = true;
+                glfwGetCursorPos(window, &previousX, &previousY);
+            }
+            else if (action == GLFW_RELEASE) {
+                midMouseDown = false;
+            }
+        }
     }
 
     void mouseMoveCallback(GLFWwindow* window, double xPosition, double yPosition) {
@@ -62,6 +73,16 @@ namespace {
             camera->UpdateOrbit(0.0f, 0.0f, deltaZ);
 
             previousY = yPosition;
+        }
+        else if (midMouseDown)
+        {
+            double sensitivity = 0.02;
+            float deltaX = static_cast<float>((previousX - xPosition) * sensitivity);
+            float deltaY = static_cast<float>((previousY - yPosition) * sensitivity);
+			previousX = xPosition;
+			previousY = yPosition;
+
+            camera->UpdatePosition(deltaX, deltaY, 0.0f);
         }
     }
 }
@@ -117,26 +138,41 @@ int main() {
         grassImageMemory
     );
 
+    Scene* scene = new Scene(device);
+
     float planeDim = 15.f;
     float halfWidth = planeDim * 0.5f;
-    Model* plane = new Model(device, transferCommandPool,
+
+    glm::ivec2 terrainSize = { 20, 20 };
+
+    for (int i = 0; i < terrainSize.x; ++i)
+    {
+        for (int j = 0; j < terrainSize.y; ++j)
         {
-            { { -halfWidth, 0.0f, halfWidth }, { 1.0f, 0.0f, 0.0f },{ 1.0f, 0.0f } },
-            { { halfWidth, 0.0f, halfWidth }, { 0.0f, 1.0f, 0.0f },{ 0.0f, 0.0f } },
-            { { halfWidth, 0.0f, -halfWidth }, { 0.0f, 0.0f, 1.0f },{ 0.0f, 1.0f } },
-            { { -halfWidth, 0.0f, -halfWidth }, { 1.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } }
-        },
-        { 0, 1, 2, 2, 3, 0 }
-    );
-    plane->SetTexture(grassImage);
-    
-    Blades* blades = new Blades(device, transferCommandPool, planeDim);
+            glm::vec3 offset = { i * planeDim, 0, j * planeDim };
+            Model* plane = new Model(device, transferCommandPool,
+                {
+                    { { -halfWidth + offset.x, 0.0f, halfWidth + offset.z }, { 1.0f, 0.0f, 0.0f },{ 1.0f, 0.0f } },
+                    { { halfWidth + offset.x, 0.0f, halfWidth + offset.z }, { 0.0f, 1.0f, 0.0f },{ 0.0f, 0.0f } },
+                    { { halfWidth + offset.x, 0.0f, -halfWidth + offset.z }, { 0.0f, 0.0f, 1.0f },{ 0.0f, 1.0f } },
+                    { { -halfWidth + offset.x, 0.0f, -halfWidth + offset.z }, { 1.0f, 1.0f, 1.0f },{ 1.0f, 1.0f } }
+                },
+                { 0, 1, 2, 2, 3, 0 }
+            );
+            plane->SetTexture(grassImage);
+            scene->AddModel(plane);
+
+
+			Blades* blades = new Blades(device, transferCommandPool, planeDim, offset);
+            scene->AddBlades(blades);
+
+        }
+    }
+
+    Blade::CreateBladeVertexIndexBuffer(device, transferCommandPool);
 
     vkDestroyCommandPool(device->GetVkDevice(), transferCommandPool, nullptr);
 
-    Scene* scene = new Scene(device);
-    scene->AddModel(plane);
-    scene->AddBlades(blades);
 
     renderer = new Renderer(device, swapChain, scene, camera);
 
@@ -157,10 +193,9 @@ int main() {
 
     vkDestroyImage(device->GetVkDevice(), grassImage, nullptr);
     vkFreeMemory(device->GetVkDevice(), grassImageMemory, nullptr);
+	Blade::DestroyBladeVertexIndexBuffer(device);
 
     delete scene;
-    delete plane;
-    delete blades;
     delete camera;
     delete renderer;
     delete swapChain;

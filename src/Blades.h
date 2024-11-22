@@ -4,13 +4,16 @@
 #include <array>
 #include "Model.h"
 
-constexpr static unsigned int NUM_BLADES = 1 << 13;
-constexpr static float MIN_HEIGHT = 1.3f;
-constexpr static float MAX_HEIGHT = 2.5f;
-constexpr static float MIN_WIDTH = 0.08f;
-constexpr static float MAX_WIDTH = 0.1f;
-constexpr static float MIN_BEND = 7.0f;
-constexpr static float MAX_BEND = 13.0f;
+constexpr static unsigned int NUM_BLADES = 1 << 8;
+constexpr static float MIN_HEIGHT = 6.3f;
+constexpr static float MAX_HEIGHT = 8.5f;
+constexpr static float MIN_WIDTH = 0.28f;
+constexpr static float MAX_WIDTH = 0.32f;
+constexpr static float MIN_BEND = 3.0f;
+constexpr static float MAX_BEND = 4.0f;
+
+constexpr static float ClumpGridSize = 10.0f;
+
 
 struct Blade {
     // Position and direction
@@ -60,13 +63,32 @@ struct Blade {
 
         return attributeDescriptions;
     }
+
+    static VkBuffer bladeVertexBuffer;
+    static VkBuffer bladeIndexBuffer;
+
+    static VkDeviceMemory bladeVertexBufferMemory;
+    static VkDeviceMemory bladeIndexBufferMemory;
+
+    static void CreateBladeVertexIndexBuffer(Device* device, VkCommandPool commandPool);
+	static void DestroyBladeVertexIndexBuffer(Device* device);
+	static VkBuffer GetBladeVertexBuffer() { return bladeVertexBuffer; }
+	static VkBuffer GetBladeIndexBuffer() { return bladeIndexBuffer; }
 };
 
+//struct BladeDrawIndirect {
+//    uint32_t vertexCount;
+//    uint32_t instanceCount;
+//    uint32_t firstVertex;
+//    uint32_t firstInstance;
+//};
+
 struct BladeDrawIndirect {
-    uint32_t vertexCount;
-    uint32_t instanceCount;
-    uint32_t firstVertex;
-    uint32_t firstInstance;
+    uint32_t    indexCount;
+    uint32_t    instanceCount;
+    uint32_t    firstIndex;
+    int32_t     vertexOffset;
+    uint32_t    firstInstance;
 };
 
 class Blades : public Model {
@@ -80,7 +102,7 @@ private:
     VkDeviceMemory numBladesBufferMemory;
 
 public:
-    Blades(Device* device, VkCommandPool commandPool, float planeDim);
+    Blades(Device* device, VkCommandPool commandPool, float planeDim, glm::vec3 offset = glm::vec3(0));
     VkBuffer GetBladesBuffer() const;
     VkBuffer GetCulledBladesBuffer() const;
     VkBuffer GetNumBladesBuffer() const;

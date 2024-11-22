@@ -14,11 +14,14 @@ public:
     void CreateCommandPools();
 
     void CreateRenderPass();
+	void CreatePostProcessRenderPass();
 
     void CreateCameraDescriptorSetLayout();
     void CreateModelDescriptorSetLayout();
     void CreateTimeDescriptorSetLayout();
     void CreateComputeDescriptorSetLayout();
+	void CreateColorDepthDescriptorSetLayout();
+	void CreateNoiseMapDescriptorSetLayout();
 
     void CreateDescriptorPool();
 
@@ -27,10 +30,14 @@ public:
     void CreateGrassDescriptorSets();
     void CreateTimeDescriptorSet();
     void CreateComputeDescriptorSets();
+	void CreateColorDepthDescriptorSet();
+	void CreateNoiseMapDescriptorSet();
 
     void CreateGraphicsPipeline();
     void CreateGrassPipeline();
     void CreateComputePipeline();
+    void CreateGrassInstancedPipeline();
+	void CreatePostProcessPipeline();
 
     void CreateFrameResources();
     void DestroyFrameResources();
@@ -38,6 +45,8 @@ public:
 
     void RecordCommandBuffers();
     void RecordComputeCommandBuffer();
+	void RecordGrassCommandBuffer();
+	void RecordPostProcessCommandBuffer();
 
     void Frame();
 
@@ -52,6 +61,7 @@ private:
     VkCommandPool computeCommandPool;
 
     VkRenderPass renderPass;
+	VkRenderPass postProcessRenderPass;
 
     VkDescriptorSetLayout cameraDescriptorSetLayout;
     VkDescriptorSetLayout modelDescriptorSetLayout;
@@ -59,6 +69,8 @@ private:
     VkDescriptorSetLayout bladesBufferDescriptorSetLayout;
     VkDescriptorSetLayout culledBladesBufferDescriptorSetLayout;
 	VkDescriptorSetLayout numBladesDescriptorSetLayout;
+	VkDescriptorSetLayout colorDepthDescriptorSetLayout;
+	VkDescriptorSetLayout noiseMapDescriptorSetLayout;
     
     VkDescriptorPool descriptorPool;
 
@@ -69,14 +81,20 @@ private:
     std::vector<VkDescriptorSet> bladesBufferDescriptorSets;
     std::vector<VkDescriptorSet> culledBladesBufferDescriptorSets;
     std::vector<VkDescriptorSet> numBladesDescriptorSets;
+    VkDescriptorSet colorDepthDescriptorSet;
+	VkDescriptorSet noiseMapDescriptorSet;
 
     VkPipelineLayout graphicsPipelineLayout;
     VkPipelineLayout grassPipelineLayout;
     VkPipelineLayout computePipelineLayout;
+	VkPipelineLayout grassInstancedPipelineLayout;
+	VkPipelineLayout postProcessPipelineLayout;
 
     VkPipeline graphicsPipeline;
     VkPipeline grassPipeline;
     VkPipeline computePipeline;
+	VkPipeline grassInstancedPipeline;
+	VkPipeline postProcessPipeline;
 
     std::vector<VkImageView> imageViews;
     VkImage depthImage;
@@ -85,9 +103,23 @@ private:
     VkImage colorImage;
     VkDeviceMemory colorImageMemory;
     VkImageView colorImageView;
+	VkImage resultImage;
+	VkDeviceMemory resultImageMemory;
+	VkImageView resultImageView;
+
+    VkImage noiseImage;
+    VkDeviceMemory noiseImageMemory;
+	VkImageView noiseImageView;
+	VkSampler noiseSampler;
+
+    VkSampler colorSampler;
+
 	VkSampleCountFlagBits msaaSamples = VK_SAMPLE_COUNT_4_BIT;
     std::vector<VkFramebuffer> framebuffers;
+    std::vector<VkFramebuffer> resultImageFramebuffers;
 
     std::vector<VkCommandBuffer> commandBuffers;
+    std::vector<VkCommandBuffer> postCommandBuffers;
     VkCommandBuffer computeCommandBuffer;
+
 };

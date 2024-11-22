@@ -39,6 +39,12 @@ VkBuffer Scene::GetTimeBuffer() const {
 }
 
 Scene::~Scene() {
+	for (auto ptr : models) {
+		delete ptr;
+	}
+	for (auto ptr : blades) {
+		delete ptr;
+	}
     vkUnmapMemory(device->GetVkDevice(), timeBufferMemory);
     vkDestroyBuffer(device->GetVkDevice(), timeBuffer, nullptr);
     vkFreeMemory(device->GetVkDevice(), timeBufferMemory, nullptr);
