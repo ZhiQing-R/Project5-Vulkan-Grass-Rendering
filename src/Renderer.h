@@ -30,6 +30,7 @@ public:
     void CreateGrassDescriptorSets();
     void CreateTimeDescriptorSet();
     void CreateComputeDescriptorSets();
+    void CreateReedsComputeDescriptorSets();
 	void CreateColorDepthDescriptorSet();
 	void CreateNoiseMapDescriptorSet();
 
@@ -37,6 +38,7 @@ public:
     void CreateGrassPipeline();
     void CreateComputePipeline();
     void CreateGrassInstancedPipeline();
+    void CreateReedInstancedPipeline();
 	void CreatePostProcessPipeline();
 
     void CreateFrameResources();
@@ -81,6 +83,9 @@ private:
     std::vector<VkDescriptorSet> bladesBufferDescriptorSets;
     std::vector<VkDescriptorSet> culledBladesBufferDescriptorSets;
     std::vector<VkDescriptorSet> numBladesDescriptorSets;
+    std::vector<VkDescriptorSet> reedsBufferDescriptorSets;
+    std::vector<VkDescriptorSet> culledReedsBufferDescriptorSets;
+    std::vector<VkDescriptorSet> numReedsDescriptorSets;
     VkDescriptorSet colorDepthDescriptorSet;
 	VkDescriptorSet noiseMapDescriptorSet;
 
@@ -88,12 +93,14 @@ private:
     VkPipelineLayout grassPipelineLayout;
     VkPipelineLayout computePipelineLayout;
 	VkPipelineLayout grassInstancedPipelineLayout;
+	VkPipelineLayout reedInstancedPipelineLayout;
 	VkPipelineLayout postProcessPipelineLayout;
 
     VkPipeline graphicsPipeline;
     VkPipeline grassPipeline;
     VkPipeline computePipeline;
 	VkPipeline grassInstancedPipeline;
+	VkPipeline reedInstancedPipeline;
 	VkPipeline postProcessPipeline;
 
     std::vector<VkImageView> imageViews;

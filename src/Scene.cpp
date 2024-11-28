@@ -15,12 +15,22 @@ const std::vector<Blades*>& Scene::GetBlades() const {
   return blades;
 }
 
+const std::vector<Reeds*>& Scene::GetReeds() const
+{
+    return reeds;
+}
+
 void Scene::AddModel(Model* model) {
     models.push_back(model);
 }
 
 void Scene::AddBlades(Blades* blades) {
   this->blades.push_back(blades);
+}
+
+void Scene::AddReeds(Reeds* reeds)
+{
+	this->reeds.push_back(reeds);
 }
 
 void Scene::UpdateTime() {

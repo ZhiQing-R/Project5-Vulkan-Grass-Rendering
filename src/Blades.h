@@ -9,8 +9,8 @@ constexpr static float MIN_HEIGHT = 6.3f;
 constexpr static float MAX_HEIGHT = 8.5f;
 constexpr static float MIN_WIDTH = 0.28f;
 constexpr static float MAX_WIDTH = 0.32f;
-constexpr static float MIN_BEND = 3.0f;
-constexpr static float MAX_BEND = 4.0f;
+constexpr static float MIN_BEND = 1.5f;
+constexpr static float MAX_BEND = 2.5f;
 
 constexpr static float ClumpGridSize = 10.0f;
 

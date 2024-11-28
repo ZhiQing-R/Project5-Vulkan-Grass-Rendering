@@ -8,6 +8,8 @@
 #include "BufferUtils.h"
 
 static constexpr unsigned int WORKGROUP_SIZE = 32;
+#define RENDER_REEDS 1
+#define RENDER_GRASS 1
 
 Renderer::Renderer(Device* device, SwapChain* swapChain, Scene* scene, Camera* camera)
   : device(device),
@@ -34,6 +36,7 @@ Renderer::Renderer(Device* device, SwapChain* swapChain, Scene* scene, Camera* c
     CreateGrassDescriptorSets();
     CreateTimeDescriptorSet();
     CreateComputeDescriptorSets();
+	CreateReedsComputeDescriptorSets();
 	CreateNoiseMapDescriptorSet();
 
     CreateFrameResources();
@@ -43,6 +46,7 @@ Renderer::Renderer(Device* device, SwapChain* swapChain, Scene* scene, Camera* c
     CreateGrassPipeline();
     CreateComputePipeline();
     CreateGrassInstancedPipeline();
+    CreateReedInstancedPipeline();
     CreatePostProcessPipeline();
     //RecordCommandBuffers();
 	RecordGrassCommandBuffer();
@@ -265,7 +269,7 @@ void Renderer::CreateTimeDescriptorSetLayout() {
     uboLayoutBinding.binding = 0;
     uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
     uboLayoutBinding.descriptorCount = 1;
-    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT;
+    uboLayoutBinding.stageFlags = VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_VERTEX_BIT;
     uboLayoutBinding.pImmutableSamplers = nullptr;
 
     std::vector<VkDescriptorSetLayoutBinding> bindings = { uboLayoutBinding };
@@ -368,7 +372,7 @@ void Renderer::CreateNoiseMapDescriptorSetLayout()
     samplerLayoutBinding.binding = 0;
     samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
     samplerLayoutBinding.descriptorCount = 1;
-    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+    samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT | VK_SHADER_STAGE_COMPUTE_BIT | VK_SHADER_STAGE_VERTEX_BIT;
     samplerLayoutBinding.pImmutableSamplers = nullptr;
 
     std::vector<VkDescriptorSetLayoutBinding> bindings = { samplerLayoutBinding };
@@ -391,22 +395,22 @@ void Renderer::CreateDescriptorPool() {
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , 1},
 
         // Models + Blades
-        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , static_cast<uint32_t>(scene->GetModels().size() + scene->GetBlades().size()) },
+        { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER , 2 * static_cast<uint32_t>(scene->GetModels().size() + scene->GetBlades().size()) },
 
         // Models + Blades
-        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , static_cast<uint32_t>(scene->GetModels().size() + scene->GetBlades().size()) },
+        { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , 2 * static_cast<uint32_t>(scene->GetModels().size() + scene->GetBlades().size()) },
 
         // Time (compute)
         { VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER , 1 },
 
         // blades buffer
-        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(scene->GetBlades().size())},
+        {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * static_cast<uint32_t>(scene->GetBlades().size())},
 
 		// culled blades buffer
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(scene->GetBlades().size())},
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * static_cast<uint32_t>(scene->GetBlades().size())},
 
 		// num blades buffer
-		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, static_cast<uint32_t>(scene->GetBlades().size())},
+		{VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 2 * static_cast<uint32_t>(scene->GetBlades().size())},
 
 		// color depth buffer
 		{VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 2},
@@ -419,7 +423,7 @@ void Renderer::CreateDescriptorPool() {
     poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
     poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
     poolInfo.pPoolSizes = poolSizes.data();
-    poolInfo.maxSets = 6 + 7 * scene->GetBlades().size();
+    poolInfo.maxSets = 6 + 14 * scene->GetBlades().size();
 
     if (vkCreateDescriptorPool(logicalDevice, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create descriptor pool");
@@ -685,12 +689,100 @@ void Renderer::CreateComputeDescriptorSets() {
         vkUpdateDescriptorSets(logicalDevice, 1, &culledBladesBufferDescriptorWrites[i], 0, nullptr);
         vkUpdateDescriptorSets(logicalDevice, 1, &numBladesDescriptorWrites[i], 0, nullptr);
     }
-
-	//// Update descriptor sets
-	//vkUpdateDescriptorSets(logicalDevice, static_cast<uint32_t>(bladesBufferDescriptorWrites.size()), bladesBufferDescriptorWrites.data(), 0, nullptr);
-	//vkUpdateDescriptorSets(logicalDevice, static_cast<uint32_t>(culledBladesBufferDescriptorWrites.size()), culledBladesBufferDescriptorWrites.data(), 0, nullptr);
-	//vkUpdateDescriptorSets(logicalDevice, static_cast<uint32_t>(numBladesDescriptorWrites.size()), numBladesDescriptorWrites.data(), 0, nullptr);
 	
+}
+
+void Renderer::CreateReedsComputeDescriptorSets()
+{
+    reedsBufferDescriptorSets.resize(scene->GetReeds().size());
+    culledReedsBufferDescriptorSets.resize(scene->GetReeds().size());
+    numReedsDescriptorSets.resize(scene->GetReeds().size());
+
+    // blades buffer descriptor set allocation
+    //VkDescriptorSetLayout layouts[] = { bladesBufferDescriptorSetLayout };
+    std::vector<VkDescriptorSetLayout> layoutsVec(scene->GetReeds().size(), bladesBufferDescriptorSetLayout);
+    VkDescriptorSetAllocateInfo allocInfo = {};
+    allocInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    allocInfo.descriptorPool = descriptorPool;
+    allocInfo.descriptorSetCount = static_cast<uint32_t>(reedsBufferDescriptorSets.size());
+    allocInfo.pSetLayouts = layoutsVec.data();
+
+    if (vkAllocateDescriptorSets(logicalDevice, &allocInfo, reedsBufferDescriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate descriptor set");
+    }
+
+    // cull blades buffer descriptor set allocation
+    //layouts[0] = culledBladesBufferDescriptorSetLayout;
+    layoutsVec = std::vector<VkDescriptorSetLayout>(scene->GetReeds().size(), culledBladesBufferDescriptorSetLayout);
+    allocInfo.pSetLayouts = layoutsVec.data();
+    if (vkAllocateDescriptorSets(logicalDevice, &allocInfo, culledReedsBufferDescriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate descriptor set");
+    }
+
+    // num blades buffer descriptor set allocation
+    //layouts[0] = numBladesDescriptorSetLayout;
+    layoutsVec = std::vector<VkDescriptorSetLayout>(scene->GetReeds().size(), numBladesDescriptorSetLayout);
+    allocInfo.pSetLayouts = layoutsVec.data();
+    if (vkAllocateDescriptorSets(logicalDevice, &allocInfo, numReedsDescriptorSets.data()) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to allocate descriptor set");
+    }
+
+    std::vector<VkWriteDescriptorSet> bladesBufferDescriptorWrites(reedsBufferDescriptorSets.size());
+    std::vector<VkWriteDescriptorSet> culledBladesBufferDescriptorWrites(culledReedsBufferDescriptorSets.size());
+    std::vector<VkWriteDescriptorSet> numBladesDescriptorWrites(numReedsDescriptorSets.size());
+
+    for (uint32_t i = 0; i < scene->GetReeds().size(); ++i)
+    {
+        VkDescriptorBufferInfo bladesBufferInfo = {};
+        bladesBufferInfo.buffer = scene->GetReeds()[i]->GetReedsBuffer();
+        bladesBufferInfo.offset = 0;
+        bladesBufferInfo.range = sizeof(Reed) * scene->GetReeds()[i]->reedsCount;
+
+        bladesBufferDescriptorWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        bladesBufferDescriptorWrites[i].dstSet = reedsBufferDescriptorSets[i];
+        bladesBufferDescriptorWrites[i].dstBinding = 0;
+        bladesBufferDescriptorWrites[i].dstArrayElement = 0;
+        bladesBufferDescriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        bladesBufferDescriptorWrites[i].descriptorCount = 1;
+        bladesBufferDescriptorWrites[i].pBufferInfo = &bladesBufferInfo;
+        bladesBufferDescriptorWrites[i].pImageInfo = nullptr;
+        bladesBufferDescriptorWrites[i].pTexelBufferView = nullptr;
+
+        VkDescriptorBufferInfo culledBladesBufferInfo = {};
+        culledBladesBufferInfo.buffer = scene->GetReeds()[i]->GetCulledReedsBuffer();
+        culledBladesBufferInfo.offset = 0;
+        culledBladesBufferInfo.range = sizeof(Reed) * scene->GetReeds()[i]->reedsCount;
+
+        culledBladesBufferDescriptorWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        culledBladesBufferDescriptorWrites[i].dstSet = culledReedsBufferDescriptorSets[i];
+        culledBladesBufferDescriptorWrites[i].dstBinding = 0;
+        culledBladesBufferDescriptorWrites[i].dstArrayElement = 0;
+        culledBladesBufferDescriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        culledBladesBufferDescriptorWrites[i].descriptorCount = 1;
+        culledBladesBufferDescriptorWrites[i].pBufferInfo = &culledBladesBufferInfo;
+        culledBladesBufferDescriptorWrites[i].pImageInfo = nullptr;
+        culledBladesBufferDescriptorWrites[i].pTexelBufferView = nullptr;
+
+        VkDescriptorBufferInfo numBladesBufferInfo = {};
+        numBladesBufferInfo.buffer = scene->GetReeds()[i]->GetNumReedsBuffer();
+        numBladesBufferInfo.offset = 0;
+        numBladesBufferInfo.range = sizeof(ReedsDrawIndirect);
+
+        numBladesDescriptorWrites[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        numBladesDescriptorWrites[i].dstSet = numReedsDescriptorSets[i];
+        numBladesDescriptorWrites[i].dstBinding = 0;
+        numBladesDescriptorWrites[i].dstArrayElement = 0;
+        numBladesDescriptorWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        numBladesDescriptorWrites[i].descriptorCount = 1;
+        numBladesDescriptorWrites[i].pBufferInfo = &numBladesBufferInfo;
+        numBladesDescriptorWrites[i].pImageInfo = nullptr;
+        numBladesDescriptorWrites[i].pTexelBufferView = nullptr;
+
+        // Update descriptor sets
+        vkUpdateDescriptorSets(logicalDevice, 1, &bladesBufferDescriptorWrites[i], 0, nullptr);
+        vkUpdateDescriptorSets(logicalDevice, 1, &culledBladesBufferDescriptorWrites[i], 0, nullptr);
+        vkUpdateDescriptorSets(logicalDevice, 1, &numBladesDescriptorWrites[i], 0, nullptr);
+    }
 }
 
 void Renderer::CreateColorDepthDescriptorSet()
@@ -1177,7 +1269,7 @@ void Renderer::CreateComputePipeline() {
     computeShaderStageInfo.pName = "main";
 
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { cameraDescriptorSetLayout, timeDescriptorSetLayout,
-        bladesBufferDescriptorSetLayout, culledBladesBufferDescriptorSetLayout, numBladesDescriptorSetLayout};
+        bladesBufferDescriptorSetLayout, culledBladesBufferDescriptorSetLayout, numBladesDescriptorSetLayout, noiseMapDescriptorSetLayout};
 
     // Create pipeline layout
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
@@ -1372,6 +1464,185 @@ void Renderer::CreateGrassInstancedPipeline()
     pipelineInfo.basePipelineIndex = -1;
 
     if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &grassInstancedPipeline) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create graphics pipeline");
+    }
+
+    // No need for the shader modules anymore
+    vkDestroyShaderModule(logicalDevice, vertShaderModule, nullptr);
+    vkDestroyShaderModule(logicalDevice, fragShaderModule, nullptr);
+}
+
+void Renderer::CreateReedInstancedPipeline()
+{
+    // --- Set up programmable shaders ---
+    VkShaderModule vertShaderModule = ShaderModule::Create("shaders/reedInstanced.vert.spv", logicalDevice);
+    VkShaderModule fragShaderModule = ShaderModule::Create("shaders/reedInstanced.frag.spv", logicalDevice);
+
+    // Assign each shader module to the appropriate stage in the pipeline
+    VkPipelineShaderStageCreateInfo vertShaderStageInfo = {};
+    vertShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    vertShaderStageInfo.stage = VK_SHADER_STAGE_VERTEX_BIT;
+    vertShaderStageInfo.module = vertShaderModule;
+    vertShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo fragShaderStageInfo = {};
+    fragShaderStageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+    fragShaderStageInfo.stage = VK_SHADER_STAGE_FRAGMENT_BIT;
+    fragShaderStageInfo.module = fragShaderModule;
+    fragShaderStageInfo.pName = "main";
+
+    VkPipelineShaderStageCreateInfo shaderStages[] = { vertShaderStageInfo, fragShaderStageInfo };
+
+    // --- Set up fixed-function stages ---
+
+    // Vertex input
+    VkPipelineVertexInputStateCreateInfo vertexInputInfo = {};
+    vertexInputInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
+
+    VkVertexInputBindingDescription bindingDescription = {};
+    bindingDescription.binding = 0;
+    bindingDescription.stride = sizeof(ReedVertex);
+    bindingDescription.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+
+
+    std::array<VkVertexInputAttributeDescription, 2> attributeDescriptions = {};
+    attributeDescriptions[0].binding = 0;
+    attributeDescriptions[0].location = 0;
+    attributeDescriptions[0].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[0].offset = 0;
+
+    attributeDescriptions[1].binding = 0;
+    attributeDescriptions[1].location = 1;
+    attributeDescriptions[1].format = VK_FORMAT_R32G32B32A32_SFLOAT;
+    attributeDescriptions[1].offset = sizeof(glm::vec4);
+
+    vertexInputInfo.vertexBindingDescriptionCount = 1;
+    vertexInputInfo.pVertexBindingDescriptions = &bindingDescription;
+    vertexInputInfo.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+    vertexInputInfo.pVertexAttributeDescriptions = attributeDescriptions.data();
+
+    // Input Assembly
+    VkPipelineInputAssemblyStateCreateInfo inputAssembly = {};
+    inputAssembly.sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO;
+    inputAssembly.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    inputAssembly.primitiveRestartEnable = VK_FALSE;
+
+    // Viewports and Scissors (rectangles that define in which regions pixels are stored)
+    VkViewport viewport = {};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(swapChain->GetVkExtent().width);
+    viewport.height = static_cast<float>(swapChain->GetVkExtent().height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+
+    VkRect2D scissor = {};
+    scissor.offset = { 0, 0 };
+    scissor.extent = swapChain->GetVkExtent();
+
+    VkPipelineViewportStateCreateInfo viewportState = {};
+    viewportState.sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO;
+    viewportState.viewportCount = 1;
+    viewportState.pViewports = &viewport;
+    viewportState.scissorCount = 1;
+    viewportState.pScissors = &scissor;
+
+    // Rasterizer
+    VkPipelineRasterizationStateCreateInfo rasterizer = {};
+    rasterizer.sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO;
+    rasterizer.depthClampEnable = VK_FALSE;
+    rasterizer.rasterizerDiscardEnable = VK_FALSE;
+    rasterizer.polygonMode = VK_POLYGON_MODE_FILL;
+    rasterizer.lineWidth = 1.0f;
+    rasterizer.cullMode = VK_CULL_MODE_NONE;
+    rasterizer.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
+    rasterizer.depthBiasEnable = VK_FALSE;
+    rasterizer.depthBiasConstantFactor = 0.0f;
+    rasterizer.depthBiasClamp = 0.0f;
+    rasterizer.depthBiasSlopeFactor = 0.0f;
+
+    // Multisampling (turned off here)
+    VkPipelineMultisampleStateCreateInfo multisampling = {};
+    multisampling.sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO;
+    multisampling.sampleShadingEnable = VK_FALSE;
+    multisampling.rasterizationSamples = msaaSamples;
+    multisampling.minSampleShading = 1.0f;
+    multisampling.pSampleMask = nullptr;
+    multisampling.alphaToCoverageEnable = VK_FALSE;
+    multisampling.alphaToOneEnable = VK_FALSE;
+
+    // Depth testing
+    VkPipelineDepthStencilStateCreateInfo depthStencil = {};
+    depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
+    depthStencil.depthTestEnable = VK_TRUE;
+    depthStencil.depthWriteEnable = VK_TRUE;
+    depthStencil.depthCompareOp = VK_COMPARE_OP_LESS;
+    depthStencil.depthBoundsTestEnable = VK_FALSE;
+    depthStencil.minDepthBounds = 0.0f;
+    depthStencil.maxDepthBounds = 1.0f;
+    depthStencil.stencilTestEnable = VK_FALSE;
+
+    // Color blending (turned off here, but showing options for learning)
+    // --> Configuration per attached framebuffer
+    VkPipelineColorBlendAttachmentState colorBlendAttachment = {};
+    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.blendEnable = VK_FALSE;
+    colorBlendAttachment.srcColorBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstColorBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.colorBlendOp = VK_BLEND_OP_ADD;
+    colorBlendAttachment.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment.alphaBlendOp = VK_BLEND_OP_ADD;
+
+    // --> Global color blending settings
+    VkPipelineColorBlendStateCreateInfo colorBlending = {};
+    colorBlending.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
+    colorBlending.logicOpEnable = VK_FALSE;
+    colorBlending.logicOp = VK_LOGIC_OP_COPY;
+    colorBlending.attachmentCount = 1;
+    colorBlending.pAttachments = &colorBlendAttachment;
+    colorBlending.blendConstants[0] = 0.0f;
+    colorBlending.blendConstants[1] = 0.0f;
+    colorBlending.blendConstants[2] = 0.0f;
+    colorBlending.blendConstants[3] = 0.0f;
+
+    std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { cameraDescriptorSetLayout,
+        culledBladesBufferDescriptorSetLayout,
+        timeDescriptorSetLayout,
+        noiseMapDescriptorSetLayout };
+
+    // Pipeline layout: used to specify uniform values
+    VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
+    pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
+    pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
+    pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
+    pipelineLayoutInfo.pushConstantRangeCount = 0;
+    pipelineLayoutInfo.pPushConstantRanges = 0;
+
+    if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutInfo, nullptr, &reedInstancedPipelineLayout) != VK_SUCCESS) {
+        throw std::runtime_error("Failed to create pipeline layout");
+    }
+
+    // --- Create graphics pipeline ---
+    VkGraphicsPipelineCreateInfo pipelineInfo = {};
+    pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
+    pipelineInfo.stageCount = 2;
+    pipelineInfo.pStages = shaderStages;
+    pipelineInfo.pVertexInputState = &vertexInputInfo;
+    pipelineInfo.pInputAssemblyState = &inputAssembly;
+    pipelineInfo.pViewportState = &viewportState;
+    pipelineInfo.pRasterizationState = &rasterizer;
+    pipelineInfo.pMultisampleState = &multisampling;
+    pipelineInfo.pDepthStencilState = &depthStencil;
+    pipelineInfo.pColorBlendState = &colorBlending;
+    pipelineInfo.pDynamicState = nullptr;
+    pipelineInfo.layout = reedInstancedPipelineLayout;
+    pipelineInfo.renderPass = renderPass;
+    pipelineInfo.subpass = 0;
+    pipelineInfo.basePipelineHandle = VK_NULL_HANDLE;
+    pipelineInfo.basePipelineIndex = -1;
+
+    if (vkCreateGraphicsPipelines(logicalDevice, VK_NULL_HANDLE, 1, &pipelineInfo, nullptr, &reedInstancedPipeline) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create graphics pipeline");
     }
 
@@ -1687,9 +1958,11 @@ void Renderer::RecreateFrameResources() {
     vkDestroyPipeline(logicalDevice, graphicsPipeline, nullptr);
     vkDestroyPipeline(logicalDevice, grassPipeline, nullptr);
     vkDestroyPipeline(logicalDevice, grassInstancedPipeline, nullptr);
+    vkDestroyPipeline(logicalDevice, reedInstancedPipeline, nullptr);
     vkDestroyPipelineLayout(logicalDevice, graphicsPipelineLayout, nullptr);
     vkDestroyPipelineLayout(logicalDevice, grassPipelineLayout, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, grassInstancedPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(logicalDevice, reedInstancedPipelineLayout, nullptr);
     
     vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
@@ -1733,6 +2006,9 @@ void Renderer::RecordComputeCommandBuffer() {
     // Bind descriptor set for time uniforms
     vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 1, 1, &timeDescriptorSet, 0, nullptr);
 
+    // Bind descriptor set for noise
+    vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 5, 1, &noiseMapDescriptorSet, 0, nullptr);
+
     // TODO: For each group of blades bind its descriptor set and dispatch
 	uint32_t groupCnt = glm::ceil(NUM_BLADES / 32);
 	for (uint32_t i = 0; i < scene->GetBlades().size(); ++i) {
@@ -1742,6 +2018,15 @@ void Renderer::RecordComputeCommandBuffer() {
 
 		vkCmdDispatch(computeCommandBuffer, groupCnt, 1, 1);
 	}
+
+    
+    for (uint32_t i = 0; i < scene->GetReeds().size(); ++i) {
+        vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 2, 1, &reedsBufferDescriptorSets[i], 0, nullptr);
+        vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 3, 1, &culledReedsBufferDescriptorSets[i], 0, nullptr);
+        vkCmdBindDescriptorSets(computeCommandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, computePipelineLayout, 4, 1, &numReedsDescriptorSets[i], 0, nullptr);
+        groupCnt = glm::ceil(scene->GetReeds()[i]->reedsCount / 32);
+        vkCmdDispatch(computeCommandBuffer, groupCnt, 1, 1);
+    }
 
     // ~ End recording ~
     if (vkEndCommandBuffer(computeCommandBuffer) != VK_SUCCESS) {
@@ -1851,6 +2136,26 @@ void Renderer::RecordGrassCommandBuffer()
             vkCmdDrawIndexedIndirect(commandBuffers[i], scene->GetBlades()[j]->GetNumBladesBuffer(), 0, 1, sizeof(BladeDrawIndirect));
         }
 
+#if RENDER_REEDS
+        // Bind the reed pipeline
+        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipeline);
+        vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 2, 1, &timeDescriptorSet, 0, nullptr);
+        vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 3, 1, &noiseMapDescriptorSet, 0, nullptr);
+        vertexBuffer = Reed::GetBladeVertexBuffer();
+        indexBuffer = Reed::GetBladeIndexBuffer();
+        vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, offsets);
+        vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+
+        for (uint32_t j = 0; j < scene->GetReeds().size(); ++j) {
+
+            //vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 1, 1, &grassDescriptorSets[j], 0, nullptr);
+            // Bind the culled blade descriptor set. This is set 0 in all pipelines so it will be inherited
+            vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 1, 1, &culledReedsBufferDescriptorSets[j], 0, nullptr);
+
+            // Draw
+            vkCmdDrawIndexedIndirect(commandBuffers[i], scene->GetReeds()[j]->GetNumReedsBuffer(), 0, 1, sizeof(ReedsDrawIndirect));
+        }
+#endif
         // End render pass
         vkCmdEndRenderPass(commandBuffers[i]);
 

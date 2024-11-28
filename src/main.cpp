@@ -6,6 +6,7 @@
 #include "Scene.h"
 #include "Image.h"
 #include <iostream>
+#include "tiny_obj_loader.h"
 
 Device* device;
 SwapChain* swapChain;
@@ -89,7 +90,7 @@ namespace {
 
 int main() {
     static constexpr char* applicationName = "Vulkan Grass Rendering";
-    InitializeWindow(1080, 720, applicationName);
+    InitializeWindow(1440, 1080, applicationName);
 
     unsigned int glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
@@ -138,6 +139,59 @@ int main() {
         grassImageMemory
     );
 
+	std::vector<ReedVertex> reedVertices;
+	std::vector<uint32_t> reedIndices;
+
+    {
+        std::string inputfile = "images/reed3.obj";
+        tinyobj::attrib_t attrib;
+        std::vector<tinyobj::shape_t> shapes;
+        std::vector<tinyobj::material_t> materials;
+
+        std::string err;
+
+        bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials, &err, inputfile.c_str());
+
+        if (!ret)
+        {
+            std::cout << err << std::endl;
+            throw std::runtime_error("Failed to load reed object");
+        }
+
+        size_t s = 0;
+        size_t index_offset = 0;
+        for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+            size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
+
+            // Loop over vertices in the face.
+            for (size_t v = 0; v < fv; v++) {
+				reedIndices.push_back(index_offset + v);
+				ReedVertex vertex = {};
+                // access to vertex
+                tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+
+                tinyobj::real_t vx = attrib.vertices[3 * size_t(idx.vertex_index) + 0] / 2.f;
+                tinyobj::real_t vy = attrib.vertices[3 * size_t(idx.vertex_index) + 1] / 2.f;
+                tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2] / 2.f;
+				if (vy < 1.0) vz /= 2.f;
+				vertex.pos = glm::vec4(vx, vy, vz, 1.0f);
+
+                // Check if `normal_index` is zero or positive. negative = no normal data
+                if (idx.normal_index >= 0) {
+                    tinyobj::real_t nx = attrib.normals[3 * size_t(idx.normal_index) + 0];
+                    tinyobj::real_t ny = attrib.normals[3 * size_t(idx.normal_index) + 1];
+                    tinyobj::real_t nz = attrib.normals[3 * size_t(idx.normal_index) + 2];
+					vertex.normal = glm::vec4(nx, ny, nz, 0.0f);
+                }
+
+				reedVertices.push_back(vertex);
+            }
+            index_offset += fv;
+        }
+
+		Reed::CreateBladeVertexIndexBuffer(device, transferCommandPool, reedVertices, reedIndices);
+    }
+
     Scene* scene = new Scene(device);
 
     float planeDim = 15.f;
@@ -165,6 +219,20 @@ int main() {
 
 			Blades* blades = new Blades(device, transferCommandPool, planeDim, offset);
             scene->AddBlades(blades);
+
+        }
+    }
+
+    const int reedScale = 20;
+
+    for (int i = 0; i < terrainSize.x / reedScale; ++i)
+    {
+        for (int j = 0; j < terrainSize.y / reedScale; ++j)
+        {
+            glm::vec3 offset = { i * planeDim * reedScale + halfWidth * (reedScale - 1), 0, j * planeDim * reedScale + halfWidth * (reedScale - 1) };
+
+            Reeds* reeds = new Reeds(device, transferCommandPool, planeDim * reedScale, offset);
+            scene->AddReeds(reeds);
 
         }
     }

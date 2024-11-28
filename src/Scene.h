@@ -5,6 +5,7 @@
 
 #include "Model.h"
 #include "Blades.h"
+#include "Reeds.h"
 
 using namespace std::chrono;
 
@@ -24,6 +25,7 @@ private:
 
     std::vector<Model*> models;
     std::vector<Blades*> blades;
+    std::vector<Reeds*> reeds;
 
 high_resolution_clock::time_point startTime = high_resolution_clock::now();
 
@@ -36,9 +38,11 @@ public:
 
     const std::vector<Model*>& GetModels() const;
     const std::vector<Blades*>& GetBlades() const;
+	const std::vector<Reeds*>& GetReeds() const;
     
     void AddModel(Model* model);
     void AddBlades(Blades* blades);
+	void AddReeds(Reeds* reeds);
 
     VkBuffer GetTimeBuffer() const;
 

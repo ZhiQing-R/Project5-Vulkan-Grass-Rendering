@@ -53,3 +53,27 @@ public:
     VkImageView GetTextureView() const;
     VkSampler GetTextureSampler() const;
 };
+
+
+// ref: https://github.com/ashima/webgl-noise/blob/master/src/noise2D.glsl
+inline glm::vec3 mod289(glm::vec3 x) {
+    return x - glm::floor(x * (1.f / 289.f)) * 289.f;
+}
+
+inline glm::vec2 mod289(glm::vec2 x) {
+    return x - glm::floor(x * (1.f / 289.f)) * 289.f;
+}
+
+inline glm::vec3 permute(glm::vec3 x) {
+    return mod289(((x * 34.f) + 10.f) * x);
+}
+
+float snoise(glm::vec2 v);
+
+float terrainHeight(glm::vec2 v);
+
+float generateRandomFloat();
+
+glm::vec2 hash22(glm::vec2 p);
+
+glm::vec2 hash32(glm::vec3 p3);

@@ -38,90 +38,6 @@ static std::array<uint32_t, 39> bladeIndexData =
     12, 13, 14
 };
 
-// ref: https://github.com/ashima/webgl-noise/blob/master/src/noise2D.glsl
-glm::vec3 mod289(glm::vec3 x) {
-    return x - glm::floor(x * (1.f / 289.f)) * 289.f;
-}
-
-glm::vec2 mod289(glm::vec2 x) {
-    return x - glm::floor(x * (1.f / 289.f)) * 289.f;
-}
-
-glm::vec3 permute(glm::vec3 x) {
-    return mod289(((x * 34.f) + 10.f) * x);
-}
-
-float snoise(glm::vec2 v)
-{
-    const glm::vec4 C = glm::vec4(0.211324865405187,  // (3.0-sqrt(3.0))/6.0
-        0.366025403784439,  // 0.5*(sqrt(3.0)-1.0)
-        -0.577350269189626,  // -1.0 + 2.0 * C.x
-        0.024390243902439); // 1.0 / 41.0
-    // First corner
-    glm::vec2 i = glm::floor(v + glm::dot(v, glm::vec2(C.y)));
-    glm::vec2 x0 = v - i + glm::dot(i, glm::vec2(C.x));
-
-    // Other corners
-    glm::vec2 i1;
-    i1 = (x0.x > x0.y) ? glm::vec2(1.0, 0.0) : glm::vec2(0.0, 1.0);
-    glm::vec4 x12 = glm::vec4(x0.x, x0.y, x0.x, x0.y) + glm::vec4(C.x, C.x, C.z, C.z);
-    x12.x -= i1.x;
-    x12.y -= i1.y;
-
-    // Permutations
-    i = mod289(i); // Avoid truncation effects in permutation
-    glm::vec3 p = permute(permute(i.y + glm::vec3(0.0, i1.y, 1.0))
-        + i.x + glm::vec3(0.0, i1.x, 1.0));
-
-    glm::vec3 m = glm::max(0.5f - glm::vec3(glm::dot(x0, x0),
-        glm::dot(glm::vec2(x12), glm::vec2(x12)), glm::dot(glm::vec2(x12.z, x12.w), glm::vec2(x12.z, x12.w))), 0.f);
-    m = m * m;
-    m = m * m;
-
-    // Gradients: 41 points uniformly over a line, mapped onto a diamond.
-    // The ring size 17*17 = 289 is close to a multiple of 41 (41*7 = 287)
-
-    glm::vec3 x = 2.f * glm::fract(p * glm::vec3(C.w)) - 1.f;
-    glm::vec3 h = glm::abs(x) - 0.5f;
-    glm::vec3 ox = glm::floor(x + 0.5f);
-    glm::vec3 a0 = x - ox;
-
-    // Normalise gradients implicitly by scaling m
-    // Approximation of: m *= inversesqrt( a0*a0 + h*h );
-    m *= 1.79284291400159f - 0.85373472095314f * (a0 * a0 + h * h);
-
-    // Compute final noise value at P
-    glm::vec3 g;
-    g.x = a0.x * x0.x + h.x * x0.y;
-    glm::vec2 tmp = glm::vec2(a0.y, a0.z) * glm::vec2(x12.x, x12.z) + glm::vec2(h.y, h.z) * glm::vec2(x12.y, x12.w);
-	g.y = tmp.x;
-	g.z = tmp.y;
-    return 130.f * glm::dot(m, g);
-}
-
-float terrainHeight(glm::vec2 v)
-{
-    return snoise(v * 0.01f) * 10.f;
-}
-
-float generateRandomFloat() {
-    return rand() / (float)RAND_MAX;
-}
-
-glm::vec2 hash22(glm::vec2 p)
-{
-    glm::vec3 p3 = glm::fract(glm::vec3(p.x, p.y, p.x) * glm::vec3(.1031, .1030, .0973));
-    p3 += glm::dot(p3, glm::vec3(p3.y, p3.z, p3.x) + 33.33f);
-    return glm::fract((glm::vec2(p3.x, p3.x) + glm::vec2(p3.y, p3.z)) * glm::vec2(p3.z, p3.y));
-}
-
-glm::vec2 hash32(glm::vec3 p3)
-{
-    p3 = glm::fract(p3 * glm::vec3(.1031, .1030, .0973));
-    p3 += glm::dot(p3, glm::vec3(p3.y, p3.z, p3.x) + 33.33f);
-    return glm::fract((glm::vec2(p3.x, p3.x) + glm::vec2(p3.y, p3.z)) * glm::vec2(p3.z, p3.y));
-}
-
 glm::vec4 getNearestClumpGrid(glm::vec2 position) {
 	glm::ivec2 clumpGridID = glm::floor(position / ClumpGridSize);
 	float minDist = 1000000.0f;
@@ -141,6 +57,7 @@ glm::vec4 getNearestClumpGrid(glm::vec2 position) {
 	return out;
 }
 
+#define USE_CLUMP 1
 
 
 Blades::Blades(Device* device, VkCommandPool commandPool, float planeDim, glm::vec3 offset) : Model(device, commandPool, {}, {}) {
@@ -163,6 +80,7 @@ Blades::Blades(Device* device, VkCommandPool commandPool, float planeDim, glm::v
 		glm::vec4 clumpData = getNearestClumpGrid(bladeXZPosition);
 		float distToCenter = glm::distance(bladeXZPosition, glm::vec2(clumpData.z, clumpData.w));
 
+#if USE_CLUMP
         // shift to clump center a little bit
 		bladeXZPosition = glm::mix(bladeXZPosition, glm::vec2(clumpData.z, clumpData.w), 0.01f);
 		bladePosition.x = bladeXZPosition.x;
@@ -176,11 +94,11 @@ Blades::Blades(Device* device, VkCommandPool commandPool, float planeDim, glm::v
         // face off to center
 		float offCenterDir = std::atan2(bladePosition.z - clumpData.w, bladePosition.x - clumpData.z) + 0.5f * 3.14159265f;
 		direction = glm::mix(direction, offCenterDir, 0.4f);
-
+#endif
         currentBlade.v0 = glm::vec4(bladePosition, direction);
 
         // Bezier point and height (v1)
-        float height = MIN_HEIGHT + (generateRandomFloat() * (MAX_HEIGHT - MIN_HEIGHT)) + 3.f * glm::exp(-0.5f * distToCenter);
+        float height = MIN_HEIGHT + (generateRandomFloat() * (MAX_HEIGHT - MIN_HEIGHT)) + 6.f * glm::exp(-0.3f * distToCenter);
         currentBlade.v1 = glm::vec4(bladePosition + bladeUp * height, height);
 
         // Physical model guide and width (v2)
@@ -241,7 +159,7 @@ void Blade::CreateBladeVertexIndexBuffer(Device* device, VkCommandPool commandPo
     BufferUtils::CreateBufferFromData(device, commandPool, bladeVertexData.data(),
         bladeVertexData.size() * sizeof(glm::vec2), VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, Blade::bladeVertexBuffer, Blade::bladeVertexBufferMemory);
     BufferUtils::CreateBufferFromData(device, commandPool, bladeIndexData.data(),
-        bladeIndexData.size() * sizeof(glm::vec2), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, Blade::bladeIndexBuffer, Blade::bladeIndexBufferMemory);
+        bladeIndexData.size() * sizeof(uint32_t), VK_BUFFER_USAGE_INDEX_BUFFER_BIT, Blade::bladeIndexBuffer, Blade::bladeIndexBufferMemory);
 }
 
 void Blade::DestroyBladeVertexIndexBuffer(Device* device)

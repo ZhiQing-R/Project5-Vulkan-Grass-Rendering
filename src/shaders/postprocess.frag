@@ -24,7 +24,7 @@ layout(location = 0) in vec2 fragTexCoord;
 layout(location = 0) out vec4 outColor;
 
 
-const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.5));
+const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
 
 
 
@@ -130,15 +130,16 @@ float fbm( vec3 p )
     return f;
 }
 
-const float cloudHeight = 55.f;
+const float cloudHeight = 65.f;
 const vec3 cloudDir = vec3(1.0, 0.3, 1.0);
 const vec3 sunCol = vec3(0.8,0.55,0.5);
+const vec3 skyCol = vec3(0.4,0.55,0.5);
 
 vec4 mapClouds( in vec3 p )
 {
 	//float d = 2.5-0.1*abs(cloudHeight - p.y);
-    p.xz *= 0.5;
-    float d = 1.0 - (abs(p.y-cloudHeight)+0.5)/3.0;
+    p.xz *= 1.5;
+    float d = 1.0 - (abs(p.y-cloudHeight)+0.5)/4.0;
 	d += 15.1 * (fbm( (p + cloudDir * time.totalTime * 9.f) * 0.02 ) - 0.5f);
 	d = clamp( d, 0.0, 1.0 );
 	
@@ -156,8 +157,8 @@ vec4 raymarchClouds( in vec3 ro, in vec3 rd, in vec3 bcol, float tmax)
 	uint randSeed = tea(floatBitsToUint(fragTexCoord.x + time.totalTime), floatBitsToUint(fragTexCoord.y + time.deltaTime));
 
 	float sun = clamp( dot(rd,-lightDir), 0.0, 1.0 );
-	float t = 0.2f*rand(randSeed);
-	for(int i=0; i<48; i++)
+	float t = 0.2f * rand(randSeed);
+	for(int i = 0; i < 16; i++)
 	{
 		if( sum.w > 0.99 || t > tmax ) break;
 		vec3 pos = ro + t*rd;
@@ -165,10 +166,13 @@ vec4 raymarchClouds( in vec3 ro, in vec3 rd, in vec3 bcol, float tmax)
 
 		float distToCloud = (cloudHeight - 10.f - pos.y) / rd.y;
 		float dt = max(0.01, max(0.5 * rand(randSeed) * distToCloud, 0.1 * t));
+        float sha = 1.f - mapClouds(pos - 1.f * lightDir).w;
 	
 		col.xyz *= vec3(0.4,0.52,0.6);
 		
         col.xyz += vec3(1.0,0.7,0.4)*0.4*pow( sun, 6.0 )*(1.0-col.w);
+
+        col.xyz += sha * sunCol * 5.f;
 		
 		col.xyz = mix( col.xyz, bcol, 0.95-exp(-0.02*t*t) );
 		
@@ -194,14 +198,14 @@ vec3 volumeLight(in vec3 ro, in vec3 rd, in vec3 bcol) {
 	vec3 total = vec3(0.0);
     t += s*rand(randSeed);
     
-    for (int i=0; i < 10; i++) { // raymarching loop
+    for (int i=0; i < 8; i++) { // raymarching loop
         vec3 p = ro + rd*t; // current point
         float h = 0.1; // density of the fog
 
         float distToCloud = (cloudHeight - 5.f - p.y) / ld.y;
 		vec3 cloudP = p + distToCloud * ld;
         float sha = 1.f - mapClouds(cloudP).w;
-		sha = 3.0 * (sha);
+		sha = 3.0 * (sha - 0.3);
                   
         // coloring
         vec3 col = sunCol*sha;
@@ -211,7 +215,8 @@ vec3 volumeLight(in vec3 ro, in vec3 rd, in vec3 bcol) {
         sum.a += -h*s; // beer's law
         t += s;
     }
-	return 0.8 * total / 90.f;
+    total = max(total, 0.0);
+	return 0.6 * total / 90.f + 0.1 * skyCol;
     return sum.xyz;
 }
 

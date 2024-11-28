@@ -52,9 +52,12 @@ layout(set = 4, binding = 0) buffer NumBlades {
      uint    firstInstance;
 } numBlades;
 
-const float gravCoe = 2.f;
-const float windStrength = 40.f;
+layout(set = 5, binding = 0) uniform sampler2D noiseSampler;
+
+float gravCoe = 2.f;
+float windStrength = 40.f;
 float windSpeed = 2.5f;
+float windDown = -0.5f;
 
 // ref: https://www.shadertoy.com/view/ldc3RB
 vec2 hash22(vec2 p)
@@ -86,6 +89,13 @@ float perlin2D(vec2 p)
                w.y);
 }
 
+vec3 perlin2DTex(vec2 p)
+{
+    p = fract(p * 0.01);
+    vec3 val = texture(noiseSampler, p).rgb;
+    return val;
+}
+
 
 bool isInFrustum(vec3 x)
 {
@@ -98,21 +108,30 @@ bool isInFrustum(vec3 x)
 void main() {
 	// Reset the number of blades to 0
 	if (gl_GlobalInvocationID.x == 0) {
-		numBlades.indexCount = 39;
         numBlades.instanceCount = 0;
 	}
 	barrier(); // Wait till all threads reach this point
+
 	Blade blade = bladesBuffer.blades[gl_GlobalInvocationID.x];
 
+    float height = blade.v1.w;
+    if (height == 0.f) return;
+    float angle = blade.v0.w;
+    float stiff = blade.up.w;
 	vec3 v0 = blade.v0.xyz;
     vec3 v1 = blade.v1.xyz;
     vec3 v2 = blade.v2.xyz;
-    vec3 up = blade.up.xyz;
-    float angle = blade.v0.w;
-    float height = blade.v1.w;
-    float stiff = blade.up.w;   
+    vec3 up = blade.up.xyz;   
     vec3 dir = vec3(cos(angle), 0, sin(angle));
     vec3 nor = normalize(cross(up, dir));
+
+    // reed configure
+    if (numBlades.indexCount > 50)
+    {
+        windStrength *= 2.0;
+        //gravCoe = length(v2.xz - v0.xz) * 1.0;
+        //windDown *= 2.f;
+    }
 
     // gravity
     vec3 gE = vec3(0.f, -1.f, 0.f) * gravCoe;
@@ -124,9 +143,9 @@ void main() {
     vec3 recovery = (tip - v2) * stiff;
 
     // wind
-    float perlin = perlin2D(v0.xz * 0.04f + windSpeed * time.totalTime);
-    float windAngle = perlin * 2.1f * 3.14159265f + 0.5 * 3.14159265f;
-    vec3 windForce = windStrength * vec3(cos(windAngle), -0.5f, sin(windAngle));
+    vec3 perlin = perlin2DTex(v0.xz * 0.04f + windSpeed * time.totalTime);
+    float windAngle = 2.0 * (perlin.r - 0.4) * 2.2f * 3.14159265f + 0.2 * 3.14159265f;
+    vec3 windForce = windStrength * (perlin.g + 0.2) * normalize(vec3(cos(windAngle), windDown * (perlin.b + 0.2), sin(windAngle)));
     windForce *= (0.5 * perlin + 0.5f);
     float windDir = 1.f - abs(dot(normalize(windForce), normalize(v2 - v0)));
     float windFr = dot(v2-v0, up) / height;

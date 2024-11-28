@@ -4,6 +4,7 @@ file(GLOB IMAGES
     ${CMAKE_CURRENT_SOURCE_DIR}/images/*.jpg
     ${CMAKE_CURRENT_SOURCE_DIR}/images/*.png
     ${CMAKE_CURRENT_SOURCE_DIR}/images/*.bmp
+    ${CMAKE_CURRENT_SOURCE_DIR}/images/*.obj
 )
 
 foreach(IMAGE ${IMAGES})
@@ -54,4 +55,5 @@ target_include_directories(vulkan_grass_rendering PRIVATE
   ${STB_INCLUDE_DIR}
 )
 
-InternalTarget("" vulkan_grass_rendering)
+InternalTarget("Vulkan Grass Rendering" vulkan_grass_rendering)
+

@@ -15,10 +15,15 @@ const float curvature = 0.3f;
 
 layout(location = 0) in vec3 normal;
 layout(location = 1) in vec3 pos;
-layout(location = 2) in vec3 center;
-layout(location = 3) in vec3 uv;
+layout(location = 3) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
+
+vec3 IntegerToColor(uint val)
+{
+  const vec3 freq = vec3(1.33333f, 2.33333f, 3.33333f);
+  return vec3(sin(freq * val) * .5 + .5);
+}
 
 // ref: https://github.com/ashima/webgl-noise/blob/master/src/noise2D.glsl
 vec3 mod289(vec3 x) {
@@ -93,31 +98,45 @@ vec3 normalFromTerrain(float x, float y)
     return n;
 }
 
+vec3 calNormal(vec3 pos)
+{
+	vec3 X = dFdx ( pos );
+    vec3 Y = dFdy ( pos );
+    return normalize ( cross ( X, Y ) );
+}
+
+const vec3 reedCol = vec3(0.6, 0.6, 0.53);
+
 void main() {
-    float se = curvature * 2.f * abs(uv.x - 0.5f);
-    se = sqrt(1.f - se * se);
-    vec3 bPos = pos + normal * se * uv.z;
-    vec3 nor = normalize(bPos - center);
+    vec3 rayDir = normalize(camera.eye.xyz - pos);
+    //vec3 nor = calNormal(pos);
+    vec3 nor = normalize(normal);
+    if (dot(nor, rayDir) < 0.0) {
+		nor = -nor;
+	}
+    bool isLeaf = uv.y > 1.f;
+    
     vec3 terrainNor = normalFromTerrain(pos.x, pos.z);
 
-    vec3 baseCol = vec3(0.17, 0.45, 0.23) * 0.6;
+    vec3 baseCol = isLeaf ? reedCol : vec3(0.17, 0.45, 0.23) * 0.7;
     float terrainDiffuse = clamp(dot(terrainNor, -lightDir), 0.f, 1.f);
     float diffuse = clamp(dot(nor, -lightDir), 0.f, 1.f) * terrainDiffuse;
-    float ambient = 0.8;
-    float thickness = pow(0.2 + 0.8 * uv.y, 2.0);
+    float ambient = isLeaf ? 0.4 : 0.4;
+    float ty = uv.y > 1.f ? (uv.y - 0.3) : uv.y;
+    float thickness = pow(0.2 + 0.8 * ty, isLeaf ? 2.0 : 1.0);
 
-    vec3 rayDir = normalize(camera.eye.xyz - pos);
+    
     vec3 H = normalize(rayDir - lightDir);
     float rim = 1.f - max(0.f, dot(-nor, rayDir));
     rim = 0.1f * rim + 0.f;
     float sss = max(0.f, dot(rayDir, lightDir));
 
-    float specular = pow(max(0.f, abs(dot(H, nor))), 32) * terrainDiffuse * 0.6;
+    float specular = pow(max(0.f, abs(dot(H, nor))), 8) * terrainDiffuse * 0.8;
     vec3 col = baseCol * thickness * (diffuse + ambient) + specular;
-    col += baseCol * rim;
-    col += (sss * thickness * 0.2) * vec3(0.07, 0.25, 0.23);
+    //col += baseCol * rim;
+    col += (sss * thickness * 0.3) * baseCol;
     outColor = vec4(col, 1.f);
-    //outColor = vec4(nor * 0.5 + 0.5, 1.f);
-    //outColor = vec4(uv.x, uv.y, 0.f, 1.f);
+    //outColor = vec4(normal * 0.5 + 0.5, 1.f);
+    //outColor = vec4(IntegerToColor(uint(normal.x)), 1.f);
     //outColor = vec4(vec3(terrainDiffuse), 1.f);
 }
