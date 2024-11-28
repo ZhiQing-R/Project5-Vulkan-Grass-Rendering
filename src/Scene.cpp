@@ -44,6 +44,11 @@ void Scene::UpdateTime() {
     memcpy(mappedData, &time, sizeof(Time));
 }
 
+void Scene::BeginTime()
+{
+	startTime = high_resolution_clock::now();
+}
+
 VkBuffer Scene::GetTimeBuffer() const {
     return timeBuffer;
 }

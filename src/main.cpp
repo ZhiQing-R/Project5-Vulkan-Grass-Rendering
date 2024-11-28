@@ -111,7 +111,7 @@ int main() {
 
     device = instance->CreateDevice(QueueFlagBit::GraphicsBit | QueueFlagBit::TransferBit | QueueFlagBit::ComputeBit | QueueFlagBit::PresentBit, deviceFeatures);
 
-    swapChain = device->CreateSwapChain(surface, 5);
+    swapChain = device->CreateSwapChain(surface, 3);
 
     camera = new Camera(device, 640.f / 480.f);
 
@@ -172,8 +172,8 @@ int main() {
 
                 tinyobj::real_t vx = attrib.vertices[3 * size_t(idx.vertex_index) + 0] / 2.f;
                 tinyobj::real_t vy = attrib.vertices[3 * size_t(idx.vertex_index) + 1] / 2.f;
-                tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2] / 2.f;
-				if (vy < 1.0) vz /= 2.f;
+                tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2] / 4.f;
+				//if (vy < 1.0) vz /= 2.f;
 				vertex.pos = glm::vec4(vx, vy, vz, 1.0f);
 
                 // Check if `normal_index` is zero or positive. negative = no normal data
@@ -249,6 +249,7 @@ int main() {
     glfwSetCursorPosCallback(GetGLFWWindow(), mouseMoveCallback);
 
     uint32_t frames = 0;
+	scene->BeginTime();
     while (!ShouldQuit()) {
         glfwPollEvents();
         scene->UpdateTime();

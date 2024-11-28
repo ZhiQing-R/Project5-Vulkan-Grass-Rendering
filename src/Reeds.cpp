@@ -21,9 +21,9 @@ Reeds::Reeds(Device* device, VkCommandPool commandPool, float planeDim, glm::vec
         for (int j = 0; j < NUM_REED; j++) {
 			glm::vec2 gridBase = -0.5f * glm::vec2(planeDim) + glm::vec2(i * gridSize, j * gridSize);
 #if UNIFORM_SPAWN
-            float spawnChance = 0.3f;
+            float spawnChance = 0.5f;
 #else
-            float spawnChance = (1.f - glm::perlin(0.03f * gridBase + 146.1413f) * 3.8f) * 0.2f;
+            float spawnChance = (1.f - glm::perlin(0.03f * gridBase + 146.1413f) * 2.4f) * 0.3f;
 #endif
             float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 			if (r > spawnChance) {

@@ -47,4 +47,5 @@ public:
     VkBuffer GetTimeBuffer() const;
 
     void UpdateTime();
+    void BeginTime();
 };

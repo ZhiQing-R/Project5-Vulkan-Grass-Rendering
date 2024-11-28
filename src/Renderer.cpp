@@ -2116,25 +2116,28 @@ void Renderer::RecordGrassCommandBuffer()
             vkCmdDrawIndexed(commandBuffers[i], static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
         }
 
+        VkBuffer vertexBuffer;
+        VkBuffer indexBuffer;
+        VkDeviceSize offsets[] = { 0 };
+
+#if RENDER_GRASS
         // Bind the grass pipeline
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipeline);
-		VkBuffer vertexBuffer = Blade::GetBladeVertexBuffer();
-		VkBuffer indexBuffer = Blade::GetBladeIndexBuffer();
-        VkDeviceSize offsets[] = { 0 };
+		vertexBuffer = Blade::GetBladeVertexBuffer();
+		indexBuffer = Blade::GetBladeIndexBuffer();
         vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, offsets);
         vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
         vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 1, 1, &grassDescriptorSets[0], 0, nullptr);
 
         for (uint32_t j = 0; j < scene->GetBlades().size(); ++j) {
-            
-            //vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 1, 1, &grassDescriptorSets[j], 0, nullptr);
             // Bind the culled blade descriptor set. This is set 0 in all pipelines so it will be inherited
             vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 2, 1, &culledBladesBufferDescriptorSets[j], 0, nullptr);
             
             // Draw
             vkCmdDrawIndexedIndirect(commandBuffers[i], scene->GetBlades()[j]->GetNumBladesBuffer(), 0, 1, sizeof(BladeDrawIndirect));
         }
+#endif
 
 #if RENDER_REEDS
         // Bind the reed pipeline

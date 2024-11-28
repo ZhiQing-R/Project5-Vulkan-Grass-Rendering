@@ -9,9 +9,7 @@ layout(set = 0, binding = 0) uniform CameraBufferObject {
     vec4 eye;
 } camera;
 
-const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
-const vec3 skyCol = vec3(0.1, 0.5, 0.8);
-const float curvature = 0.3f;
+
 
 layout(location = 0) in vec3 normal;
 layout(location = 1) in vec3 pos;
@@ -93,6 +91,11 @@ vec3 normalFromTerrain(float x, float y)
     return n;
 }
 
+const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
+const vec3 sunCol = vec3(0.8,0.55,0.5);
+const vec3 skyCol = 1.2 * vec3(0.81,0.565,0.35);
+const float curvature = 0.3f;
+
 void main() {
     float se = curvature * 2.f * abs(uv.x - 0.5f);
     se = sqrt(1.f - se * se);
@@ -100,10 +103,10 @@ void main() {
     vec3 nor = normalize(bPos - center);
     vec3 terrainNor = normalFromTerrain(pos.x, pos.z);
 
-    vec3 baseCol = vec3(0.17, 0.45, 0.23) * 0.6;
+    vec3 baseCol = vec3(0.24, 0.45, 0.23) * 0.6;
     float terrainDiffuse = clamp(dot(terrainNor, -lightDir), 0.f, 1.f);
     float diffuse = clamp(dot(nor, -lightDir), 0.f, 1.f) * terrainDiffuse;
-    float ambient = 0.8;
+    vec3 ambient = 0.8 * skyCol;
     float thickness = pow(0.2 + 0.8 * uv.y, 2.0);
 
     vec3 rayDir = normalize(camera.eye.xyz - pos);

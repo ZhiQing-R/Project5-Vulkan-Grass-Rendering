@@ -133,7 +133,7 @@ float fbm( vec3 p )
 const float cloudHeight = 65.f;
 const vec3 cloudDir = vec3(1.0, 0.3, 1.0);
 const vec3 sunCol = vec3(0.8,0.55,0.5);
-const vec3 skyCol = vec3(0.4,0.55,0.5);
+const vec3 skyCol = 1.2 * vec3(0.81,0.565,0.35);
 
 vec4 mapClouds( in vec3 p )
 {
@@ -172,7 +172,7 @@ vec4 raymarchClouds( in vec3 ro, in vec3 rd, in vec3 bcol, float tmax)
 		
         col.xyz += vec3(1.0,0.7,0.4)*0.4*pow( sun, 6.0 )*(1.0-col.w);
 
-        col.xyz += sha * sunCol * 5.f;
+        col.xyz += sha * sunCol * 8.f;
 		
 		col.xyz = mix( col.xyz, bcol, 0.95-exp(-0.02*t*t) );
 		
@@ -216,7 +216,7 @@ vec3 volumeLight(in vec3 ro, in vec3 rd, in vec3 bcol) {
         t += s;
     }
     total = max(total, 0.0);
-	return 0.6 * total / 90.f + 0.1 * skyCol;
+	return 0.01 * total + 0.1 * skyCol;
     return sum.xyz;
 }
 
@@ -232,18 +232,23 @@ void main()
 {
     vec4 color = texture(colorSampler, fragTexCoord);
 	vec3 rd = getRayDir(fragTexCoord);
-	vec3 col = vec3(0.84,0.95,1.0)*0.77 - rd.y*0.6;
+	vec3 col = skyCol*0.77 - rd.y*0.6;
 	col *= 0.55;
 	float sun = clamp( dot(rd,-lightDir), 0.0, 1.0 );
     col += vec3(1.0,0.7,0.3)*0.3*pow( sun, 6.0 );
 	vec3 bcol = col;
+
+    vec2 vg = fragTexCoord;
+    vg *= 1.0 - fragTexCoord.yx;
+    float vig = vg.x * vg.y * 20.0;
+    vig = pow(vig, 0.125);
 
 	if (color.a == 1.f)
 	{
 	    col = volumeLight(camera.eye.xyz, rd, bcol);
         col += color.rgb;
         col = ACES(col);
-		outColor = vec4(col, 1.f);
+		outColor = vec4(col * vig, 1.f);
 		return;
 	}
 
@@ -260,6 +265,6 @@ void main()
 //	col = mix( col, vec3(col.x+col.y+col.z)*0.33, 0.2 );
 //	col *= vec3(1.06,1.05,1.0);
     
-    outColor = vec4(col, 1.f);
+    outColor = vec4(col * vig, 1.f);
 	//outColor = color;
 }

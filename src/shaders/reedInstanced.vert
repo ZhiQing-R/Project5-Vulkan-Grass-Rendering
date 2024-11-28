@@ -33,6 +33,7 @@ layout(location = 1) in vec4 in_normal;
 
 layout(location = 0) out vec3 out_normal;
 layout(location = 1) out vec3 out_pos;
+layout(location = 2) out vec3 out_center;
 layout(location = 3) out vec2 out_uv;
 
 out gl_PerVertex {
@@ -240,12 +241,13 @@ void main()
     {
         float leafHash = uintHash(leafID);
         float uvy = max(0.0, in_pos.y - 1.0);
-        vec3 offset = perlin2DTex(leafHash + in_pos.xz * 0.005 + 0.01 * time.totalTime) * uvy * 15.0;
+        vec3 offset = perlin2DTex(leafHash + pos.xz * 0.0005 + 0.01 * time.totalTime) * uvy * 15.0;
         pos += offset * vec3(0.1, 1.0, 0.1);
     }
     
     out_normal = rot * vec3(in_normal);
     out_pos = pos.xyz;
+    out_center = c;
     out_uv = in_pos.xy;
 
     gl_Position = camera.proj * camera.view * vec4(pos, 1.f);

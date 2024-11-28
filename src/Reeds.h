@@ -8,8 +8,8 @@ constexpr static float REED_MIN_HEIGHT = 10.3f;
 constexpr static float REED_MAX_HEIGHT = 16.5f;
 constexpr static float REED_MIN_WIDTH = 0.28f;
 constexpr static float REED_MAX_WIDTH = 0.32f;
-constexpr static float REED_MIN_BEND = 2.6f;
-constexpr static float REED_MAX_BEND = 3.6f;
+constexpr static float REED_MIN_BEND = 3.6f;
+constexpr static float REED_MAX_BEND = 4.6f;
 
 struct ReedVertex {
 	glm::vec4 pos;

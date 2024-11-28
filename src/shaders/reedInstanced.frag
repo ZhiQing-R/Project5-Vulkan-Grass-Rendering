@@ -9,12 +9,9 @@ layout(set = 0, binding = 0) uniform CameraBufferObject {
     vec4 eye;
 } camera;
 
-const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
-const vec3 skyCol = vec3(0.1, 0.5, 0.8);
-const float curvature = 0.3f;
-
 layout(location = 0) in vec3 normal;
 layout(location = 1) in vec3 pos;
+layout(location = 2) in vec3 center;
 layout(location = 3) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
@@ -105,24 +102,29 @@ vec3 calNormal(vec3 pos)
     return normalize ( cross ( X, Y ) );
 }
 
-const vec3 reedCol = vec3(0.6, 0.6, 0.53);
+const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
+const vec3 reedCol = vec3(0.6, 0.64, 0.57);
+const vec3 sunCol = vec3(0.8,0.55,0.5);
+const vec3 skyCol = 1.2 * vec3(0.81,0.565,0.35);
+const float curvature = 0.3f;
+
 
 void main() {
     vec3 rayDir = normalize(camera.eye.xyz - pos);
     //vec3 nor = calNormal(pos);
     vec3 nor = normalize(normal);
     if (dot(nor, rayDir) < 0.0) {
-		nor = -nor;
+		//nor = -nor;
 	}
     bool isLeaf = uv.y > 1.f;
     
     vec3 terrainNor = normalFromTerrain(pos.x, pos.z);
 
-    vec3 baseCol = isLeaf ? reedCol : vec3(0.17, 0.45, 0.23) * 0.7;
+    vec3 baseCol = isLeaf ? reedCol : vec3(0.24, 0.45, 0.23) * 0.7;
     float terrainDiffuse = clamp(dot(terrainNor, -lightDir), 0.f, 1.f);
     float diffuse = clamp(dot(nor, -lightDir), 0.f, 1.f) * terrainDiffuse;
-    float ambient = isLeaf ? 0.4 : 0.4;
-    float ty = uv.y > 1.f ? (uv.y - 0.3) : uv.y;
+    vec3 ambient = (isLeaf ? 0.4 : 0.4) * mix(sunCol, baseCol, 0.5);
+    float ty = isLeaf ? (uv.y - 0.4) : uv.y;
     float thickness = pow(0.2 + 0.8 * ty, isLeaf ? 2.0 : 1.0);
 
     
@@ -131,10 +133,10 @@ void main() {
     rim = 0.1f * rim + 0.f;
     float sss = max(0.f, dot(rayDir, lightDir));
 
-    float specular = pow(max(0.f, abs(dot(H, nor))), 8) * terrainDiffuse * 0.8;
+    float specular = pow(max(0.f, abs(dot(H, nor))), 16) * terrainDiffuse * 0.6;
     vec3 col = baseCol * thickness * (diffuse + ambient) + specular;
     //col += baseCol * rim;
-    col += (sss * thickness * 0.3) * baseCol;
+    col += (sss * thickness * 0.8) * mix(sunCol, baseCol, 0.5);
     outColor = vec4(col, 1.f);
     //outColor = vec4(normal * 0.5 + 0.5, 1.f);
     //outColor = vec4(IntegerToColor(uint(normal.x)), 1.f);
