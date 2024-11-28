@@ -207,6 +207,7 @@ void main()
     vec3 v = cross(oNor, cNor);
     float va = acos(dot(oNor, cNor));
     mat3 rot = rotationMatrix(v, va);
+    mat3 dRot = rotationMatrix(bitangent, -0.6 * 3.14159265);
 
 //    vec3 bitangent = vec3(1,0,0);
 //    vec3 cnormal = normalize(cross(tangent, bitangent));
@@ -226,14 +227,10 @@ void main()
 //	    normal = -normal;
 //	}
 
-    vec3 pos = in_pos.xyz * rotation;
+    vec3 pos = rotation * in_pos.xyz;
     float xzDist = length(in_pos.xz);
     pos = pos * vec3(height, 1.0, height) + c;
     pos += height * (in_pos.x * bitangent + in_pos.z * cNor);
-    if (in_pos.y > 1.0)
-    {
-        //pos.y -= pow(xzDist * height * 0.9, 2.0) * (in_pos.z) * 8.0;
-    }
 
     // leaf waving
     uint leafID = gl_VertexIndex / 36;
@@ -245,7 +242,7 @@ void main()
         pos += offset * vec3(0.1, 1.0, 0.1);
     }
     
-    out_normal = rot * vec3(in_normal);
+    out_normal = rot * dRot * rotation * vec3(in_normal);
     out_pos = pos.xyz;
     out_center = c;
     out_uv = in_pos.xy;

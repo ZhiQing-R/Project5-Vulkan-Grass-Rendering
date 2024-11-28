@@ -92,8 +92,8 @@ vec3 normalFromTerrain(float x, float y)
 }
 
 const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
-const vec3 sunCol = vec3(0.8,0.55,0.5);
-const vec3 skyCol = 1.2 * vec3(0.81,0.565,0.35);
+const vec3 sunCol = vec3(0.8,0.55,0.6);
+const vec3 skyCol = 1.2 * vec3(0.81,0.665,0.45);
 const float curvature = 0.3f;
 
 void main() {
@@ -106,7 +106,7 @@ void main() {
     vec3 baseCol = vec3(0.24, 0.45, 0.23) * 0.6;
     float terrainDiffuse = clamp(dot(terrainNor, -lightDir), 0.f, 1.f);
     float diffuse = clamp(dot(nor, -lightDir), 0.f, 1.f) * terrainDiffuse;
-    vec3 ambient = 0.8 * skyCol;
+    vec3 ambient = 0.95 * mix(skyCol, baseCol, 0.5);
     float thickness = pow(0.2 + 0.8 * uv.y, 2.0);
 
     vec3 rayDir = normalize(camera.eye.xyz - pos);
@@ -118,7 +118,7 @@ void main() {
     float specular = pow(max(0.f, abs(dot(H, nor))), 32) * terrainDiffuse * 0.6;
     vec3 col = baseCol * thickness * (diffuse + ambient) + specular;
     col += baseCol * rim;
-    col += (sss * thickness * 0.2) * vec3(0.07, 0.25, 0.23);
+    col += (sss * thickness * 0.2) * mix(sunCol, baseCol, 0.5);
     outColor = vec4(col, 1.f);
     //outColor = vec4(nor * 0.5 + 0.5, 1.f);
     //outColor = vec4(uv.x, uv.y, 0.f, 1.f);

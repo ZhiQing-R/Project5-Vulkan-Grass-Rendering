@@ -132,8 +132,8 @@ float fbm( vec3 p )
 
 const float cloudHeight = 65.f;
 const vec3 cloudDir = vec3(1.0, 0.3, 1.0);
-const vec3 sunCol = vec3(0.8,0.55,0.5);
-const vec3 skyCol = 1.2 * vec3(0.81,0.565,0.35);
+const vec3 sunCol = vec3(0.8,0.55,0.6);
+const vec3 skyCol = 1.2 * vec3(0.81,0.665,0.45);
 
 vec4 mapClouds( in vec3 p )
 {

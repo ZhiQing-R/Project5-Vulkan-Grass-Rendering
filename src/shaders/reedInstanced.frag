@@ -105,7 +105,7 @@ vec3 calNormal(vec3 pos)
 const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
 const vec3 reedCol = vec3(0.6, 0.64, 0.57);
 const vec3 sunCol = vec3(0.8,0.55,0.5);
-const vec3 skyCol = 1.2 * vec3(0.81,0.565,0.35);
+const vec3 skyCol = 1.2 * vec3(0.81,0.665,0.45);
 const float curvature = 0.3f;
 
 
@@ -116,6 +116,7 @@ void main() {
     if (dot(nor, rayDir) < 0.0) {
 		//nor = -nor;
 	}
+    if (nor.y < 0.0) nor = -nor;
     bool isLeaf = uv.y > 1.f;
     
     vec3 terrainNor = normalFromTerrain(pos.x, pos.z);
@@ -138,7 +139,7 @@ void main() {
     //col += baseCol * rim;
     col += (sss * thickness * 0.8) * mix(sunCol, baseCol, 0.5);
     outColor = vec4(col, 1.f);
-    //outColor = vec4(normal * 0.5 + 0.5, 1.f);
+    //outColor = vec4(nor * 0.5 + 0.5, 1.f);
     //outColor = vec4(IntegerToColor(uint(normal.x)), 1.f);
     //outColor = vec4(vec3(terrainDiffuse), 1.f);
 }
