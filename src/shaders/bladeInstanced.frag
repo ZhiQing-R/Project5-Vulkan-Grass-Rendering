@@ -103,7 +103,7 @@ void main() {
     vec3 nor = normalize(bPos - center);
     vec3 terrainNor = normalFromTerrain(pos.x, pos.z);
 
-    vec3 baseCol = vec3(0.24, 0.45, 0.23) * 0.6;
+    vec3 baseCol = vec3(0.24, 0.45, 0.33) * 0.6;
     float terrainDiffuse = clamp(dot(terrainNor, -lightDir), 0.f, 1.f);
     float diffuse = clamp(dot(nor, -lightDir), 0.f, 1.f) * terrainDiffuse;
     vec3 ambient = 0.95 * mix(skyCol, baseCol, 0.5);

@@ -161,7 +161,7 @@ const mat3 yRot90 = mat3(
 vec3 calCurveNormal(in vec3 v0, in vec3 v1, in vec3 v2, in vec3 sNor, float t)
 {
     vec3 eT = normalize(v2 - v1);
-    vec3 eB = yRot90 * eT;
+    vec3 eB = yRot90 * normalize(vec3(eT.x, 0.0, eT.z));
     vec3 eN = cross(eB, eT);
     if (eN.y < 0.0) eN = -eN;
     return normalize(mix(sNor, eN, t));
@@ -180,10 +180,10 @@ void main()
     vec3 v2 = blade.v2.xyz;
     vec3 xzOffset = vec3(v2.x - v0.x, 0, v2.z - v0.z) * 0.2;
     //v1 += xzOffset;
-    v1.y += height * 0.6;
-    v1 += xzOffset;
-    v2.y -= height * 0.1;
-    v2 += xzOffset;
+    v1.y += height * 0.3;
+    //v1 -= xzOffset;
+    //v2.y -= height * 0.1;
+    //v2 += xzOffset;
 
     float uvy = in_pos.y / 1.6;
 
@@ -199,15 +199,21 @@ void main()
 		vec3(-sin(angle), 0, cos(angle))
 	);
 
-    vec3 oNor = vec3(-sin(angle), 0, cos(angle));
-    vec3 cNor = calCurveNormal(v0, v1, v2, oNor, uvy);
+    vec3 oNor = rotation[0];
+    vec3 bitangent = vec3(-sin(angle), 0, cos(angle));
     vec3 tangent = normalize(b - a);
-    vec3 bitangent = normalize(cross(cNor, tangent));
+    vec3 cNor = normalize(cross(tangent, bitangent));
+    if (cNor.y < 0.0) cNor = -cNor;
+    bitangent = normalize(cross(tangent, cNor));
+    //vec3 oNor = rotation[0];
+    //vec3 cNor = calCurveNormal(v0, v1, v2, oNor, uvy);
+    
+    //vec3 bitangent = normalize(cross(tangent, cNor));
+    //bitangent = oNor;
 
     vec3 v = cross(oNor, cNor);
     float va = acos(dot(oNor, cNor));
-    mat3 rot = rotationMatrix(v, va);
-    mat3 dRot = rotationMatrix(bitangent, -0.6 * 3.14159265);
+    mat3 rot = rotationMatrix(v, 1.2 * va);
 
 //    vec3 bitangent = vec3(1,0,0);
 //    vec3 cnormal = normalize(cross(tangent, bitangent));
@@ -229,8 +235,9 @@ void main()
 
     vec3 pos = rotation * in_pos.xyz;
     float xzDist = length(in_pos.xz);
-    pos = pos * vec3(height, 1.0, height) + c;
-    pos += height * (in_pos.x * bitangent + in_pos.z * cNor);
+    //pos = pos * vec3(height, 1.0, height) + c;
+    pos += c;
+    pos += height * (in_pos.z * bitangent + in_pos.x * cNor);
 
     // leaf waving
     uint leafID = gl_VertexIndex / 36;
@@ -238,11 +245,11 @@ void main()
     {
         float leafHash = uintHash(leafID);
         float uvy = max(0.0, in_pos.y - 1.0);
-        vec3 offset = perlin2DTex(leafHash + pos.xz * 0.0005 + 0.01 * time.totalTime) * uvy * 15.0;
+        vec3 offset = perlin2DTex(leafHash + pos.xz * 0.0005 + 0.01 * time.totalTime).xyz * uvy * 5.0;
         pos += offset * vec3(0.1, 1.0, 0.1);
     }
     
-    out_normal = rot * dRot * rotation * vec3(in_normal);
+    out_normal = rot * rotation * vec3(in_normal);
     out_pos = pos.xyz;
     out_center = c;
     out_uv = in_pos.xy;

@@ -2075,14 +2075,17 @@ void Renderer::RecordGrassCommandBuffer()
         renderPassInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
         renderPassInfo.pClearValues = clearValues.data();
 
-        std::vector<VkBufferMemoryBarrier> barriers(scene->GetBlades().size());
+        std::vector<VkBufferMemoryBarrier> barriers(scene->GetBlades().size() + scene->GetReeds().size());
         for (uint32_t j = 0; j < barriers.size(); ++j) {
             barriers[j].sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER;
             barriers[j].srcAccessMask = VK_ACCESS_SHADER_WRITE_BIT;
             barriers[j].dstAccessMask = VK_ACCESS_INDIRECT_COMMAND_READ_BIT;
             barriers[j].srcQueueFamilyIndex = device->GetQueueIndex(QueueFlags::Compute);
             barriers[j].dstQueueFamilyIndex = device->GetQueueIndex(QueueFlags::Graphics);
-            barriers[j].buffer = scene->GetBlades()[j]->GetNumBladesBuffer();
+            if (j < scene->GetBlades().size())
+                barriers[j].buffer = scene->GetBlades()[j]->GetNumBladesBuffer();
+            else
+				barriers[j].buffer = scene->GetReeds()[j - scene->GetBlades().size()]->GetNumReedsBuffer();
             barriers[j].offset = 0;
             barriers[j].size = sizeof(BladeDrawIndirect);
         }

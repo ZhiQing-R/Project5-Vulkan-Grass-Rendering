@@ -205,7 +205,7 @@ vec3 volumeLight(in vec3 ro, in vec3 rd, in vec3 bcol) {
         float distToCloud = (cloudHeight - 5.f - p.y) / ld.y;
 		vec3 cloudP = p + distToCloud * ld;
         float sha = 1.f - mapClouds(cloudP).w;
-		sha = 3.0 * (sha - 0.3);
+		sha = 3.0 * (sha - 0.35);
                   
         // coloring
         vec3 col = sunCol*sha;
@@ -216,14 +216,14 @@ vec3 volumeLight(in vec3 ro, in vec3 rd, in vec3 bcol) {
         t += s;
     }
     total = max(total, 0.0);
-	return 0.01 * total + 0.1 * skyCol;
+	return 0.01 * total + 0.15 * skyCol;
     return sum.xyz;
 }
 
 vec3 ACES(vec3 color)
 {
 	color = color * (color * 2.51f + 0.03f) / (color * (color * 2.43f + 0.59f) + 0.14f);
-    color = 1.3 * (color - 0.5) + 0.5;
+    color = 1.6 * (color - 0.5) + 0.5;
     return color;
 }
 

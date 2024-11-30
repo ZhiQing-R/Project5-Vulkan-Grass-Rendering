@@ -130,9 +130,9 @@ void main() {
     if (numBlades.indexCount > 50)
     {
         windStrength *= 2.0;
-        gravCoe *= 2.0;
-        windDown *= 2.f;
-        windAngleVar *= 0.5f;
+        //gravCoe *= 2.0;
+//        windDown *= 4.f;
+        windAngleVar *= 0.2f;
     }
 
     // gravity
@@ -146,8 +146,8 @@ void main() {
 
     // wind
     vec3 perlin = perlin2DTex(v0.xz * 0.04f + windSpeed * time.totalTime);
-    float windAngle = 2.0 * (perlin.r - 0.4) * windAngleVar * 3.14159265f + 0.2 * 3.14159265f;
-    vec3 windForce = windStrength * (perlin.g + 0.2) * normalize(vec3(cos(windAngle), windDown * (perlin.b + 0.2), sin(windAngle)));
+    float windAngle = 2.0 * (perlin.r - 0.4) * windAngleVar * 3.14159265f + 0.3 * 3.14159265f;
+    vec3 windForce = windStrength * (perlin.g + 0.2) * normalize(vec3(cos(windAngle), windDown * (perlin.b * 1.5), sin(windAngle)));
     windForce *= (0.5 * perlin + 0.5f);
     float windDir = 1.f - abs(dot(normalize(windForce), normalize(v2 - v0)));
     float windFr = dot(v2-v0, up) / height;

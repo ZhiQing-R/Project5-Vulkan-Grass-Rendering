@@ -113,9 +113,6 @@ void main() {
     vec3 rayDir = normalize(camera.eye.xyz - pos);
     //vec3 nor = calNormal(pos);
     vec3 nor = normalize(normal);
-    if (dot(nor, rayDir) < 0.0) {
-		//nor = -nor;
-	}
     if (nor.y < 0.0) nor = -nor;
     bool isLeaf = uv.y > 1.f;
     

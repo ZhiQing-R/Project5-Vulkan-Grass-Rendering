@@ -38,7 +38,7 @@ Reeds::Reeds(Device* device, VkCommandPool commandPool, float planeDim, glm::vec
             float x = generateRandomFloat() * gridSize + gridBase.x;
             float z = generateRandomFloat() * gridSize + gridBase.y;
             float y = 0.f;
-            float direction = generateRandomFloat() * 0.4f * 3.14159265f - 0.2f * 3.14159265f;
+            float direction = generateRandomFloat() * 0.2f * 3.14159265f + 1.3f * 3.14159265f;
             glm::vec3 bladePosition(x, y, z);
             bladePosition += offset;
             glm::vec2 bladeXZPosition(bladePosition.x, bladePosition.z);

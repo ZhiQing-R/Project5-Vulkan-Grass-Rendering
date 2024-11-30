@@ -143,7 +143,7 @@ int main() {
 	std::vector<uint32_t> reedIndices;
 
     {
-        std::string inputfile = "images/reed3.obj";
+        std::string inputfile = "images/reed1.obj";
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
         std::vector<tinyobj::material_t> materials;
