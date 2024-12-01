@@ -182,8 +182,8 @@ void main()
     //v1 += xzOffset;
     v1.y += height * 0.3;
     //v1 -= xzOffset;
-    //v2.y -= height * 0.1;
-    //v2 += xzOffset;
+    v2.y -= height * 0.1;
+    v2 += xzOffset;
 
     float uvy = in_pos.y / 1.6;
 

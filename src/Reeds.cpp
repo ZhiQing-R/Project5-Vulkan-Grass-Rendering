@@ -9,7 +9,7 @@ VkDeviceMemory Reed::reedVertexBufferMemory = 0;
 VkDeviceMemory Reed::reedIndexBufferMemory = 0;
 uint32_t Reed::reedIndexCount = 0;
 
-#define UNIFORM_SPAWN 0
+#define UNIFORM_SPAWN 1
 
 Reeds::Reeds(Device* device, VkCommandPool commandPool, float planeDim, glm::vec3 offset) : Model(device, commandPool, {}, {})
 {

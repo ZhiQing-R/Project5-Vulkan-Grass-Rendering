@@ -131,10 +131,10 @@ void main() {
     rim = 0.1f * rim + 0.f;
     float sss = max(0.f, dot(rayDir, lightDir));
 
-    float specular = pow(max(0.f, abs(dot(H, nor))), 16) * terrainDiffuse * 0.6;
+    float specular = pow(max(0.f, abs(dot(H, nor))), 32) * terrainDiffuse * 0.6;
     vec3 col = baseCol * thickness * (diffuse + ambient) + specular;
     //col += baseCol * rim;
-    col += (sss * thickness * 0.8) * mix(sunCol, baseCol, 0.5);
+    col += (sss * thickness * 0.9) * mix(sunCol, baseCol, 0.5);
     outColor = vec4(col, 1.f);
     //outColor = vec4(nor * 0.5 + 0.5, 1.f);
     //outColor = vec4(IntegerToColor(uint(normal.x)), 1.f);
