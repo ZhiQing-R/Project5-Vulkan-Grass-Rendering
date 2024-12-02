@@ -16,6 +16,18 @@ layout(location = 3) in vec2 uv;
 
 layout(location = 0) out vec4 outColor;
 
+layout( push_constant ) uniform theme
+{
+	vec3 reedCol;
+    float pad0;
+	vec3 grassCol;
+    float pad1;
+    vec3 sunCol;
+    float pad2;
+    vec3 skyCol;
+    float pad3;
+} Theme;
+
 vec3 IntegerToColor(uint val)
 {
   const vec3 freq = vec3(1.33333f, 2.33333f, 3.33333f);
@@ -103,9 +115,9 @@ vec3 calNormal(vec3 pos)
 }
 
 const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
-const vec3 reedCol = vec3(0.6, 0.64, 0.57);
-const vec3 sunCol = vec3(0.8,0.55,0.5);
-const vec3 skyCol = 1.2 * vec3(0.81,0.665,0.45);
+//const vec3 reedCol = vec3(0.6, 0.64, 0.57);
+//const vec3 sunCol = vec3(0.8,0.55,0.5);
+//const vec3 skyCol = 1.2 * vec3(0.81,0.665,0.45);
 const float curvature = 0.3f;
 
 
@@ -118,10 +130,10 @@ void main() {
     
     vec3 terrainNor = normalFromTerrain(pos.x, pos.z);
 
-    vec3 baseCol = isLeaf ? reedCol : vec3(0.24, 0.45, 0.23) * 0.7;
+    vec3 baseCol = isLeaf ? Theme.reedCol : vec3(0.24, 0.45, 0.23) * 0.7;
     float terrainDiffuse = clamp(dot(terrainNor, -lightDir), 0.f, 1.f);
     float diffuse = clamp(dot(nor, -lightDir), 0.f, 1.f) * terrainDiffuse;
-    vec3 ambient = (isLeaf ? 0.4 : 0.4) * mix(sunCol, baseCol, 0.5);
+    vec3 ambient = (isLeaf ? 0.4 : 0.4) * mix(Theme.sunCol, baseCol, 0.5);
     float ty = isLeaf ? (uv.y - 0.4) : uv.y;
     float thickness = pow(0.2 + 0.8 * ty, isLeaf ? 2.0 : 1.0);
 
@@ -134,7 +146,7 @@ void main() {
     float specular = pow(max(0.f, abs(dot(H, nor))), 32) * terrainDiffuse * 0.6;
     vec3 col = baseCol * thickness * (diffuse + ambient) + specular;
     //col += baseCol * rim;
-    col += (sss * thickness * 0.9) * mix(sunCol, baseCol, 0.5);
+    col += (sss * thickness * 0.9) * mix(Theme.sunCol, baseCol, 0.5);
     outColor = vec4(col, 1.f);
     //outColor = vec4(nor * 0.5 + 0.5, 1.f);
     //outColor = vec4(IntegerToColor(uint(normal.x)), 1.f);

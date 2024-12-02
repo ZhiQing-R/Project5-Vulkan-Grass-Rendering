@@ -14,6 +14,18 @@ struct Time {
     float totalTime = 0.0f;
 };
 
+struct Theme
+{
+    glm::vec3 reedCol = glm::vec3(0.6, 0.64, 0.57);
+    float pad0;
+	glm::vec3 grassCol = glm::vec3(0.45, 0.64, 0.57) * 0.6f;
+    float pad1;
+    glm::vec3 sunCol = glm::vec3(0.8, 0.55, 0.5);
+    float ambientScale = 1.0f;
+    glm::vec3 skyCol = glm::vec3(0.81, 0.665, 0.45) * 1.2f;
+    float ambientBlend = 0.5f;
+};
+
 class Scene {
 private:
     Device* device;
@@ -31,6 +43,7 @@ high_resolution_clock::time_point startTime = high_resolution_clock::now();
 
 public:
     Time time;
+	Theme theme;
 
     Scene() = delete;
     Scene(Device* device);

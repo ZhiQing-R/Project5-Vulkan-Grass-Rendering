@@ -51,6 +51,10 @@ public:
 	void RecordPostProcessCommandBuffer();
 
     void Frame();
+	Scene* GetScene();
+    bool reRecord = false;
+	bool renderGrass = true;
+	bool renderReeds = true;
 
 private:
     Device* device;

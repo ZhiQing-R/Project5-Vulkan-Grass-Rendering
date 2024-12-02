@@ -1432,13 +1432,18 @@ void Renderer::CreateGrassInstancedPipeline()
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts = { cameraDescriptorSetLayout, modelDescriptorSetLayout,
         culledBladesBufferDescriptorSetLayout };
 
+    VkPushConstantRange push_constant;
+    push_constant.offset = 0;
+    push_constant.size = sizeof(Theme);
+    push_constant.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
     // Pipeline layout: used to specify uniform values
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = 0;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+    pipelineLayoutInfo.pPushConstantRanges = &push_constant;
 
     if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutInfo, nullptr, &grassInstancedPipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline layout");
@@ -1611,13 +1616,18 @@ void Renderer::CreateReedInstancedPipeline()
         timeDescriptorSetLayout,
         noiseMapDescriptorSetLayout };
 
+    VkPushConstantRange push_constant;
+    push_constant.offset = 0;
+    push_constant.size = sizeof(Theme);
+    push_constant.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
     // Pipeline layout: used to specify uniform values
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = 0;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = &push_constant;
 
     if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutInfo, nullptr, &reedInstancedPipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline layout");
@@ -1769,13 +1779,18 @@ void Renderer::CreatePostProcessPipeline()
     std::vector<VkDescriptorSetLayout> descriptorSetLayouts = 
     { cameraDescriptorSetLayout, colorDepthDescriptorSetLayout, timeDescriptorSetLayout, noiseMapDescriptorSetLayout };
 
+    VkPushConstantRange push_constant;
+    push_constant.offset = 0;
+    push_constant.size = sizeof(Theme);
+    push_constant.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+
     // Pipeline layout: used to specify uniform values
     VkPipelineLayoutCreateInfo pipelineLayoutInfo = {};
     pipelineLayoutInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO;
     pipelineLayoutInfo.setLayoutCount = static_cast<uint32_t>(descriptorSetLayouts.size());
     pipelineLayoutInfo.pSetLayouts = descriptorSetLayouts.data();
-    pipelineLayoutInfo.pushConstantRangeCount = 0;
-    pipelineLayoutInfo.pPushConstantRanges = 0;
+    pipelineLayoutInfo.pushConstantRangeCount = 1;
+	pipelineLayoutInfo.pPushConstantRanges = &push_constant;
 
     if (vkCreatePipelineLayout(logicalDevice, &pipelineLayoutInfo, nullptr, &postProcessPipelineLayout) != VK_SUCCESS) {
         throw std::runtime_error("Failed to create pipeline layout");
@@ -1973,6 +1988,7 @@ void Renderer::RecreateFrameResources() {
 	CreateGrassInstancedPipeline();
     //RecordCommandBuffers();
 	RecordGrassCommandBuffer();
+	RecordPostProcessCommandBuffer();
 }
 
 void Renderer::RecordComputeCommandBuffer() {
@@ -2037,7 +2053,7 @@ void Renderer::RecordComputeCommandBuffer() {
 void Renderer::RecordGrassCommandBuffer()
 {
     commandBuffers.resize(swapChain->GetCount());
-
+	
     // Specify the command pool and number of buffers to allocate
     VkCommandBufferAllocateInfo allocInfo = {};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -2123,45 +2139,53 @@ void Renderer::RecordGrassCommandBuffer()
         VkBuffer indexBuffer;
         VkDeviceSize offsets[] = { 0 };
 
-#if RENDER_GRASS
-        // Bind the grass pipeline
-        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipeline);
-		vertexBuffer = Blade::GetBladeVertexBuffer();
-		indexBuffer = Blade::GetBladeIndexBuffer();
-        vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, offsets);
-        vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        if (renderGrass)
+        {
+            // Bind the grass pipeline
+            vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipeline);
+            vertexBuffer = Blade::GetBladeVertexBuffer();
+            indexBuffer = Blade::GetBladeIndexBuffer();
+            vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, offsets);
+            vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-        vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 1, 1, &grassDescriptorSets[0], 0, nullptr);
+            vkCmdPushConstants(commandBuffers[i], grassInstancedPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Theme), &scene->theme);
 
-        for (uint32_t j = 0; j < scene->GetBlades().size(); ++j) {
-            // Bind the culled blade descriptor set. This is set 0 in all pipelines so it will be inherited
-            vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 2, 1, &culledBladesBufferDescriptorSets[j], 0, nullptr);
-            
-            // Draw
-            vkCmdDrawIndexedIndirect(commandBuffers[i], scene->GetBlades()[j]->GetNumBladesBuffer(), 0, 1, sizeof(BladeDrawIndirect));
+            vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 0, 1, &cameraDescriptorSet, 0, nullptr);
+
+            vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 1, 1, &grassDescriptorSets[0], 0, nullptr);
+
+            for (uint32_t j = 0; j < scene->GetBlades().size(); ++j) {
+                // Bind the culled blade descriptor set. This is set 0 in all pipelines so it will be inherited
+                vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 2, 1, &culledBladesBufferDescriptorSets[j], 0, nullptr);
+
+                // Draw
+                vkCmdDrawIndexedIndirect(commandBuffers[i], scene->GetBlades()[j]->GetNumBladesBuffer(), 0, 1, sizeof(BladeDrawIndirect));
+            }
         }
-#endif
 
-#if RENDER_REEDS
-        // Bind the reed pipeline
-        vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipeline);
-        vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 2, 1, &timeDescriptorSet, 0, nullptr);
-        vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 3, 1, &noiseMapDescriptorSet, 0, nullptr);
-        vertexBuffer = Reed::GetBladeVertexBuffer();
-        indexBuffer = Reed::GetBladeIndexBuffer();
-        vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, offsets);
-        vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
+        if (renderReeds)
+        {
+            // Bind the reed pipeline
+            vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipeline);
+            vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 2, 1, &timeDescriptorSet, 0, nullptr);
+            vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 3, 1, &noiseMapDescriptorSet, 0, nullptr);
+            vertexBuffer = Reed::GetBladeVertexBuffer();
+            indexBuffer = Reed::GetBladeIndexBuffer();
+            vkCmdBindVertexBuffers(commandBuffers[i], 0, 1, &vertexBuffer, offsets);
+            vkCmdBindIndexBuffer(commandBuffers[i], indexBuffer, 0, VK_INDEX_TYPE_UINT32);
 
-        for (uint32_t j = 0; j < scene->GetReeds().size(); ++j) {
+            vkCmdPushConstants(commandBuffers[i], grassInstancedPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Theme), &scene->theme);
 
-            //vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 1, 1, &grassDescriptorSets[j], 0, nullptr);
-            // Bind the culled blade descriptor set. This is set 0 in all pipelines so it will be inherited
-            vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 1, 1, &culledReedsBufferDescriptorSets[j], 0, nullptr);
+            for (uint32_t j = 0; j < scene->GetReeds().size(); ++j) {
 
-            // Draw
-            vkCmdDrawIndexedIndirect(commandBuffers[i], scene->GetReeds()[j]->GetNumReedsBuffer(), 0, 1, sizeof(ReedsDrawIndirect));
+                //vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, grassInstancedPipelineLayout, 1, 1, &grassDescriptorSets[j], 0, nullptr);
+                // Bind the culled blade descriptor set. This is set 0 in all pipelines so it will be inherited
+                vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, reedInstancedPipelineLayout, 1, 1, &culledReedsBufferDescriptorSets[j], 0, nullptr);
+
+                // Draw
+                vkCmdDrawIndexedIndirect(commandBuffers[i], scene->GetReeds()[j]->GetNumReedsBuffer(), 0, 1, sizeof(ReedsDrawIndirect));
+            }
         }
-#endif
         // End render pass
         vkCmdEndRenderPass(commandBuffers[i]);
 
@@ -2248,6 +2272,8 @@ void Renderer::RecordPostProcessCommandBuffer()
 
         // Bind the graphics pipeline
         vkCmdBindPipeline(postCommandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipeline);
+
+        vkCmdPushConstants(postCommandBuffers[i], postProcessPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Theme), &scene->theme);
 
         vkCmdDraw(postCommandBuffers[i], 3, 1, 0, 0);
 
@@ -2404,6 +2430,20 @@ void Renderer::Frame() {
     if (!swapChain->Present()) {
         RecreateFrameResources();
     }
+
+    if (reRecord)
+    {
+		reRecord = false;
+		vkQueueWaitIdle(device->GetQueue(QueueFlags::Graphics));
+        vkFreeCommandBuffers(logicalDevice, graphicsCommandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
+		RecordGrassCommandBuffer();
+		RecordComputeCommandBuffer();
+    }
+}
+
+Scene* Renderer::GetScene()
+{
+    return scene;
 }
 
 Renderer::~Renderer() {

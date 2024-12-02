@@ -23,8 +23,17 @@ layout(location = 0) in vec2 fragTexCoord;
 
 layout(location = 0) out vec4 outColor;
 
-
-const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
+layout( push_constant ) uniform theme
+{
+	vec3 reedCol;
+    float pad0;
+	vec3 grassCol;
+    float pad1;
+    vec3 sunCol;
+    float pad2;
+    vec3 skyCol;
+    float pad3;
+} Theme;
 
 
 
@@ -132,8 +141,9 @@ float fbm( vec3 p )
 
 const float cloudHeight = 65.f;
 const vec3 cloudDir = vec3(1.0, 0.3, 1.0);
-const vec3 sunCol = vec3(0.8,0.55,0.6);
-const vec3 skyCol = 1.2 * vec3(0.81,0.665,0.45);
+const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
+//const vec3 sunCol = vec3(0.8,0.55,0.6);
+//const vec3 skyCol = 1.2 * vec3(0.81,0.665,0.45);
 
 vec4 mapClouds( in vec3 p )
 {
@@ -172,7 +182,7 @@ vec4 raymarchClouds( in vec3 ro, in vec3 rd, in vec3 bcol, float tmax)
 		
         col.xyz += vec3(1.0,0.7,0.4)*0.4*pow( sun, 6.0 )*(1.0-col.w);
 
-        col.xyz += sha * sunCol * 8.f;
+        col.xyz += sha * Theme.sunCol * 8.f;
 		
 		col.xyz = mix( col.xyz, bcol, 0.95-exp(-0.02*t*t) );
 		
@@ -208,7 +218,7 @@ vec3 volumeLight(in vec3 ro, in vec3 rd, in vec3 bcol) {
 		sha = 3.0 * (sha - 0.35);
                   
         // coloring
-        vec3 col = sunCol*sha;
+        vec3 col = Theme.sunCol * sha;
 		total += col;
             
         sum.rgb += h*s*exp(sum.a)*col; // add the color to the final result
@@ -216,7 +226,7 @@ vec3 volumeLight(in vec3 ro, in vec3 rd, in vec3 bcol) {
         t += s;
     }
     total = max(total, 0.0);
-	return 0.01 * total + 0.15 * skyCol;
+	return 0.01 * total + 0.15 * Theme.skyCol;
     return sum.xyz;
 }
 
@@ -232,7 +242,7 @@ void main()
 {
     vec4 color = texture(colorSampler, fragTexCoord);
 	vec3 rd = getRayDir(fragTexCoord);
-	vec3 col = skyCol*0.77 - rd.y*0.6;
+	vec3 col = Theme.skyCol * 0.77 - rd.y * 0.6;
 	col *= 0.55;
 	float sun = clamp( dot(rd,-lightDir), 0.0, 1.0 );
     col += vec3(1.0,0.7,0.3)*0.3*pow( sun, 6.0 );
@@ -252,7 +262,7 @@ void main()
 		return;
 	}
 
-	col += sunCol*0.35*pow( sun, 3.0 );
+	col += Theme.sunCol * 0.35 * pow( sun, 3.0 );
 	vec4 res = raymarchClouds( camera.eye.xyz, rd, bcol, 1000.f);
 	col = col*(1.0-res.w) + res.xyz;
 	col += volumeLight(camera.eye.xyz, rd, bcol);

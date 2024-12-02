@@ -86,6 +86,81 @@ namespace {
             camera->UpdatePosition(deltaX, deltaY, 0.0f);
         }
     }
+
+	void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
+	{
+		if (action == GLFW_PRESS)
+		{
+            switch (key)
+            {
+            case GLFW_KEY_ESCAPE:
+				glfwSetWindowShouldClose(window, GLFW_TRUE);
+				break;
+			case GLFW_KEY_1:
+            {
+				Scene* scene = renderer->GetScene();
+				scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
+                scene->theme.grassCol = glm::vec3(0.45, 0.64, 0.57) * 0.6f;
+				scene->theme.sunCol = glm::vec3(0.8, 0.55, 0.5);
+				scene->theme.skyCol = glm::vec3(0.81, 0.665, 0.45) * 1.2f;
+                scene->theme.ambientScale = 1.0f;
+                scene->theme.ambientBlend = 0.5f;
+				renderer->reRecord = true;
+				break;
+            }
+            case GLFW_KEY_2:
+            {
+				Scene* scene = renderer->GetScene();
+				scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
+                scene->theme.grassCol = glm::vec3(0.24, 0.45, 0.33) * 0.6f;
+				scene->theme.sunCol = glm::vec3(0.4, 0.35, 0.5) * 1.2f;
+				scene->theme.skyCol = glm::vec3(0.51, 0.665, 0.85) * 0.5f;
+                scene->theme.ambientScale = 2.5f;
+                scene->theme.ambientBlend = 0.5f;
+                renderer->reRecord = true;
+			    break;
+            }
+            case GLFW_KEY_3:
+            {
+                Scene* scene = renderer->GetScene();
+                scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
+                scene->theme.grassCol = glm::vec3(0.44, 0.55, 0.36) * 0.7f;
+                scene->theme.sunCol = glm::vec3(0.9, 0.65, 0.5);
+                scene->theme.skyCol = glm::vec3(0.41, 0.515, 0.55) * 1.8f;
+                scene->theme.ambientScale = 1.0f;
+                scene->theme.ambientBlend = 0.8f;
+                renderer->reRecord = true;
+                break;
+            }
+            case GLFW_KEY_4:
+            {
+                Scene* scene = renderer->GetScene();
+                scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
+                scene->theme.grassCol = glm::vec3(0.31, 0.55, 0.37) * 0.8f;
+                scene->theme.sunCol = glm::vec3(0.9, 0.55, 0.5);
+                scene->theme.skyCol = glm::vec3(0.41, 0.565, 0.65) * 1.8f;
+                scene->theme.ambientScale = 1.0f;
+				scene->theme.ambientBlend = 0.9f;
+                renderer->reRecord = true;
+                break;
+            }
+            case GLFW_KEY_R:
+            {
+				renderer->renderReeds = !renderer->renderReeds;
+                renderer->reRecord = true;
+                break;
+            }
+            case GLFW_KEY_G:
+            {
+                renderer->renderGrass = !renderer->renderGrass;
+                renderer->reRecord = true;
+                break;
+            }
+            default:
+                break;
+            }
+		}
+	}
 }
 
 int main() {
@@ -247,6 +322,7 @@ int main() {
     glfwSetWindowSizeCallback(GetGLFWWindow(), resizeCallback);
     glfwSetMouseButtonCallback(GetGLFWWindow(), mouseDownCallback);
     glfwSetCursorPosCallback(GetGLFWWindow(), mouseMoveCallback);
+	glfwSetKeyCallback(GetGLFWWindow(), keyCallback);
 
     uint32_t frames = 0;
 	scene->BeginTime();
