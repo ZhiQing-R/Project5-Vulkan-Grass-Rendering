@@ -1958,6 +1958,7 @@ void Renderer::DestroyFrameResources() {
     vkDestroyImageView(logicalDevice, colorImageView, nullptr);
     vkFreeMemory(logicalDevice, colorImageMemory, nullptr);
     vkDestroyImage(logicalDevice, colorImage, nullptr);
+	vkDestroySampler(logicalDevice, colorSampler, nullptr);
 
 	vkDestroyImageView(logicalDevice, resultImageView, nullptr);
 	vkFreeMemory(logicalDevice, resultImageMemory, nullptr);
@@ -2203,6 +2204,7 @@ void Renderer::RecordGrassCommandBuffer()
         postRenderPassInfo.pClearValues = clearValues.data();
 
         // Bind the camera descriptor set. This is set 0 in all pipelines so it will be inherited
+        vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipelineLayout, 0, 1, &cameraDescriptorSet, 0, nullptr);
         vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipelineLayout, 1, 1, &colorDepthDescriptorSet, 0, nullptr);
         vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipelineLayout, 2, 1, &timeDescriptorSet, 0, nullptr);
         vkCmdBindDescriptorSets(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipelineLayout, 3, 1, &noiseMapDescriptorSet, 0, nullptr);
@@ -2211,6 +2213,7 @@ void Renderer::RecordGrassCommandBuffer()
 
         // Bind the graphics pipeline
         vkCmdBindPipeline(commandBuffers[i], VK_PIPELINE_BIND_POINT_GRAPHICS, postProcessPipeline);
+        vkCmdPushConstants(commandBuffers[i], postProcessPipelineLayout, VK_SHADER_STAGE_FRAGMENT_BIT, 0, sizeof(Theme), &scene->theme);
 
         vkCmdDraw(commandBuffers[i], 3, 1, 0, 0);
 
@@ -2458,11 +2461,15 @@ Renderer::~Renderer() {
     vkDestroyPipeline(logicalDevice, grassPipeline, nullptr);
     vkDestroyPipeline(logicalDevice, computePipeline, nullptr);
     vkDestroyPipeline(logicalDevice, grassInstancedPipeline, nullptr);
+	vkDestroyPipeline(logicalDevice, reedInstancedPipeline, nullptr);
+	vkDestroyPipeline(logicalDevice, postProcessPipeline, nullptr);
 
     vkDestroyPipelineLayout(logicalDevice, graphicsPipelineLayout, nullptr);
     vkDestroyPipelineLayout(logicalDevice, grassPipelineLayout, nullptr);
     vkDestroyPipelineLayout(logicalDevice, computePipelineLayout, nullptr);
 	vkDestroyPipelineLayout(logicalDevice, grassInstancedPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(logicalDevice, reedInstancedPipelineLayout, nullptr);
+	vkDestroyPipelineLayout(logicalDevice, postProcessPipelineLayout, nullptr);
 
     vkDestroyDescriptorSetLayout(logicalDevice, cameraDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(logicalDevice, modelDescriptorSetLayout, nullptr);
@@ -2471,10 +2478,18 @@ Renderer::~Renderer() {
 	vkDestroyDescriptorSetLayout(logicalDevice, culledBladesBufferDescriptorSetLayout, nullptr);
 	vkDestroyDescriptorSetLayout(logicalDevice, numBladesDescriptorSetLayout, nullptr);
     vkDestroyDescriptorSetLayout(logicalDevice, colorDepthDescriptorSetLayout, nullptr);
+	vkDestroyDescriptorSetLayout(logicalDevice, noiseMapDescriptorSetLayout, nullptr);
+
+    vkDestroyImageView(logicalDevice, noiseImageView, nullptr);
+	vkFreeMemory(logicalDevice, noiseImageMemory, nullptr);
+	vkDestroyImage(logicalDevice, noiseImage, nullptr);
+	vkDestroySampler(logicalDevice, noiseSampler, nullptr);
+
 
     vkDestroyDescriptorPool(logicalDevice, descriptorPool, nullptr);
 
     vkDestroyRenderPass(logicalDevice, renderPass, nullptr);
+	vkDestroyRenderPass(logicalDevice, postProcessRenderPass, nullptr);
     DestroyFrameResources();
     vkDestroyCommandPool(logicalDevice, computeCommandPool, nullptr);
     vkDestroyCommandPool(logicalDevice, graphicsCommandPool, nullptr);

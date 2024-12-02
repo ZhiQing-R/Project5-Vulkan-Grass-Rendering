@@ -339,12 +339,14 @@ int main() {
     vkDestroyImage(device->GetVkDevice(), grassImage, nullptr);
     vkFreeMemory(device->GetVkDevice(), grassImageMemory, nullptr);
 	Blade::DestroyBladeVertexIndexBuffer(device);
+	Reed::DestroyBladeVertexIndexBuffer(device);
 
     delete scene;
     delete camera;
     delete renderer;
     delete swapChain;
     delete device;
+	vkDestroySurfaceKHR(instance->GetVkInstance(), surface, nullptr);
     delete instance;
     DestroyWindow();
 
