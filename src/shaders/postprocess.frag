@@ -26,7 +26,7 @@ layout(location = 0) out vec4 outColor;
 layout( push_constant ) uniform theme
 {
 	vec3 reedCol;
-    float pad0;
+    uint renderCloud;
 	vec3 grassCol;
     float pad1;
     vec3 sunCol;
@@ -124,6 +124,12 @@ float noise( in vec3 x )
 	return mix( a, b, f.z );
 }
 
+float perlin(in vec2 p)
+{
+	vec2 w = fract(p);
+    return texture( noiseSampler, w).x;
+}
+
 
 const mat3 m = mat3( 0.00,  0.80,  0.60,
                     -0.80,  0.36, -0.48,
@@ -148,8 +154,8 @@ const vec3 lightDir = normalize(vec3(-1.0, -0.8f, 0.2));
 vec4 mapClouds( in vec3 p )
 {
 	//float d = 2.5-0.1*abs(cloudHeight - p.y);
-    p.xz *= 1.5;
-    float d = 1.0 - (abs(p.y-cloudHeight)+0.5)/4.0;
+    p.xz *= 1.2;
+    float d = 1.0 - (abs(p.y-cloudHeight)+0.5)/3.0;
 	d += 15.1 * (fbm( (p + cloudDir * time.totalTime * 9.f) * 0.02 ) - 0.5f);
 	d = clamp( d, 0.0, 1.0 );
 	
@@ -165,17 +171,21 @@ vec4 raymarchClouds( in vec3 ro, in vec3 rd, in vec3 bcol, float tmax)
 {
 	vec4 sum = vec4(0, 0, 0, 0);
 	uint randSeed = tea(floatBitsToUint(fragTexCoord.x + time.totalTime), floatBitsToUint(fragTexCoord.y + time.deltaTime));
+    float upper = (cloudHeight - ro.y) / rd.y;
+    float lower = (cloudHeight - 30.0 - ro.y) / rd.y;
+    float stepSize = (upper - lower) / 24.0;
 
 	float sun = clamp( dot(rd,-lightDir), 0.0, 1.0 );
-	float t = 0.2f * rand(randSeed);
-	for(int i = 0; i < 16; i++)
+	float t = 0.1f * perlin(ro.xz);
+	for(int i = 0; i < 32; i++)
 	{
 		if( sum.w > 0.99 || t > tmax ) break;
 		vec3 pos = ro + t*rd;
 		vec4 col = mapClouds( pos );
 
-		float distToCloud = (cloudHeight - 10.f - pos.y) / rd.y;
-		float dt = max(0.01, max(0.5 * rand(randSeed) * distToCloud, 0.1 * t));
+		float distToCloud = (cloudHeight - 30.0 - pos.y) / rd.y;
+        distToCloud *= step(30.0, cloudHeight - pos.y);
+		float dt = max(stepSize * (perlin(pos.xz * 0.5) + 0.6), distToCloud);
         float sha = 1.f - mapClouds(pos - 1.f * lightDir).w;
 	
 		col.xyz *= vec3(0.4,0.52,0.6);
@@ -263,8 +273,11 @@ void main()
 	}
 
 	col += Theme.sunCol * 0.35 * pow( sun, 3.0 );
-	vec4 res = raymarchClouds( camera.eye.xyz, rd, bcol, 1000.f);
-	col = col*(1.0-res.w) + res.xyz;
+    if (Theme.renderCloud > 0 && camera.eye.y < 40.f)
+    {
+	    vec4 res = raymarchClouds( camera.eye.xyz, rd, bcol, 1000.f);
+	    col = col*(1.0-res.w) + res.xyz;
+    }
 	col += volumeLight(camera.eye.xyz, rd, bcol);
     
     col = ACES(col);

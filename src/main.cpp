@@ -87,6 +87,16 @@ namespace {
         }
     }
 
+    void setTheme(Scene* scene)
+    {
+        scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
+        scene->theme.grassCol = glm::vec3(0.45, 0.64, 0.57) * 0.6f;
+        scene->theme.sunCol = glm::vec3(1.2, 0.75, 0.5);
+        scene->theme.skyCol = glm::vec3(0.9, 0.665, 0.45) * 1.0f;
+        scene->theme.ambientScale = 1.0f;
+        scene->theme.ambientBlend = 0.7f;
+    }
+
 	void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods)
 	{
 		if (action == GLFW_PRESS)
@@ -98,33 +108,37 @@ namespace {
 				break;
 			case GLFW_KEY_1:
             {
+                // Luminescence of Eventide
 				Scene* scene = renderer->GetScene();
 				scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
                 scene->theme.grassCol = glm::vec3(0.45, 0.64, 0.57) * 0.6f;
-				scene->theme.sunCol = glm::vec3(0.8, 0.55, 0.5);
-				scene->theme.skyCol = glm::vec3(0.81, 0.665, 0.45) * 1.2f;
+				scene->theme.sunCol = glm::vec3(1.2, 0.75, 0.5);
+				scene->theme.skyCol = glm::vec3(0.9, 0.665, 0.45) * 1.0f;
                 scene->theme.ambientScale = 1.0f;
-                scene->theme.ambientBlend = 0.5f;
+                scene->theme.ambientBlend = 0.7f;
 				renderer->reRecord = true;
 				break;
             }
             case GLFW_KEY_2:
             {
+                // Night Sky's Grace
 				Scene* scene = renderer->GetScene();
 				scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
                 scene->theme.grassCol = glm::vec3(0.24, 0.45, 0.33) * 0.6f;
+                scene->theme.reedCol = glm::vec3(0.6, 0.74, 0.77);
 				scene->theme.sunCol = glm::vec3(0.4, 0.35, 0.5) * 1.2f;
 				scene->theme.skyCol = glm::vec3(0.51, 0.665, 0.85) * 0.5f;
                 scene->theme.ambientScale = 2.5f;
-                scene->theme.ambientBlend = 0.5f;
+                scene->theme.ambientBlend = 0.7f;
                 renderer->reRecord = true;
 			    break;
             }
             case GLFW_KEY_3:
             {
+                // Fresh Breezes of Dawn
                 Scene* scene = renderer->GetScene();
                 scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
-                scene->theme.grassCol = glm::vec3(0.44, 0.55, 0.36) * 0.7f;
+                scene->theme.grassCol = glm::vec3(0.39, 0.55, 0.36) * 0.7f;
                 scene->theme.sunCol = glm::vec3(0.9, 0.65, 0.5);
                 scene->theme.skyCol = glm::vec3(0.41, 0.515, 0.55) * 1.8f;
                 scene->theme.ambientScale = 1.0f;
@@ -134,11 +148,12 @@ namespace {
             }
             case GLFW_KEY_4:
             {
+                // The Fading Stories
                 Scene* scene = renderer->GetScene();
-                scene->theme.reedCol = glm::vec3(0.6, 0.64, 0.57);
+                scene->theme.reedCol = glm::vec3(0.7, 0.84, 0.87) * 0.8f;
                 scene->theme.grassCol = glm::vec3(0.31, 0.55, 0.37) * 0.8f;
-                scene->theme.sunCol = glm::vec3(0.9, 0.55, 0.5);
-                scene->theme.skyCol = glm::vec3(0.41, 0.565, 0.65) * 1.8f;
+                scene->theme.sunCol = glm::vec3(0.7, 0.65, 0.6);
+                scene->theme.skyCol = glm::vec3(0.41, 0.565, 0.75) * 1.99f;
                 scene->theme.ambientScale = 1.0f;
 				scene->theme.ambientBlend = 0.9f;
                 renderer->reRecord = true;
@@ -153,6 +168,13 @@ namespace {
             case GLFW_KEY_G:
             {
                 renderer->renderGrass = !renderer->renderGrass;
+                renderer->reRecord = true;
+                break;
+            }
+            case GLFW_KEY_C:
+            {
+                Scene* scene = renderer->GetScene();
+				scene->theme.renderCloud = (scene->theme.renderCloud + 1) % 2;
                 renderer->reRecord = true;
                 break;
             }
@@ -268,6 +290,7 @@ int main() {
     }
 
     Scene* scene = new Scene(device);
+	setTheme(scene);
 
     float planeDim = 15.f;
     float halfWidth = planeDim * 0.5f;

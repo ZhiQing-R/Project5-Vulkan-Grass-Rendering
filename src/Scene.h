@@ -17,7 +17,7 @@ struct Time {
 struct Theme
 {
     glm::vec3 reedCol = glm::vec3(0.6, 0.64, 0.57);
-    float pad0;
+    uint32_t renderCloud = 0;
 	glm::vec3 grassCol = glm::vec3(0.45, 0.64, 0.57) * 0.6f;
     float pad1;
     glm::vec3 sunCol = glm::vec3(0.8, 0.55, 0.5);

@@ -9,7 +9,7 @@ VkDeviceMemory Reed::reedVertexBufferMemory = 0;
 VkDeviceMemory Reed::reedIndexBufferMemory = 0;
 uint32_t Reed::reedIndexCount = 0;
 
-#define UNIFORM_SPAWN 1
+#define UNIFORM_SPAWN 0
 
 Reeds::Reeds(Device* device, VkCommandPool commandPool, float planeDim, glm::vec3 offset) : Model(device, commandPool, {}, {})
 {
@@ -23,7 +23,7 @@ Reeds::Reeds(Device* device, VkCommandPool commandPool, float planeDim, glm::vec
 #if UNIFORM_SPAWN
             float spawnChance = 0.5f;
 #else
-            float spawnChance = (1.f - glm::perlin(0.03f * gridBase + 146.1413f) * 2.4f) * 0.3f;
+            float spawnChance = (1.f - glm::perlin(0.02f * gridBase + 146.1413f) * 2.4f) * 0.5f;
 #endif
             float r = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
 			if (r > spawnChance) {
